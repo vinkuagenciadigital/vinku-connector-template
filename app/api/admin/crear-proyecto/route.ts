@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
     // 2. Env vars del cliente
     const envs = [
       { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey },
-      { key: 'SIIGO_USER', value: siigoUser },
-      { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey },
+    //  { key: 'SIIGO_USER', value: siigoUser },
+    //  { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey },
       { key: 'CLIENTE_NOMBRE', value: nombreCliente },
     ]
     for (const env of envs) {
