@@ -7,11 +7,15 @@ export async function POST(req: NextRequest) {
 
     const VERCEL_TOKEN = process.env.VERCEL_TOKEN!
     const TEMPLATE_REPO = process.env.TEMPLATE_GITHUB_REPO!
+    const TEAM_ID = process.env.VERCEL_TEAM_ID || '' // agrega esta env var en tu fábrica
     const baseSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
     const cleanSlug = `${baseSlug}-conexion-clientify-siigo`
 
+    const teamQuery = TEAM_ID ? `?teamId=${TEAM_ID}` : ''
+    const teamQueryDeploy = TEAM_ID ? `?forceNew=1&teamId=${TEAM_ID}` : '?forceNew=1'
+
     // 1. Crear proyecto
-    const resProject = await fetch('https://api.vercel.com/v10/projects', {
+    const resProject = await fetch(`https://api.vercel.com/v10/projects${teamQuery}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -23,26 +27,24 @@ export async function POST(req: NextRequest) {
     const projectData = await resProject.json()
     if (!resProject.ok) throw new Error(JSON.stringify(projectData))
 
-    // 2. Env vars del cliente
+    // 2. Env vars
     const envs = [
       { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey },
-    //  { key: 'SIIGO_USER', value: siigoUser },
-    //  { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey },
       { key: 'CLIENTE_NOMBRE', value: nombreCliente },
     ]
     for (const env of envs) {
       if(!env.value) continue
-      await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env`, {
+      await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env${teamQuery}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: env.key, value: env.value, type: 'encrypted', target: ['production','preview','development'] }),
       })
     }
 
-    // 3. Deploy inicial
-    await new Promise(r => setTimeout(r, 2500)) // Esperar que se guarden las env vars
+    // 3. Deploy inicial - CORREGIDO
+    await new Promise(r => setTimeout(r, 2500))
 
-    const resDeploy = await fetch(`https://api.vercel.com/v13/deployments?forceNew=1`, {
+    const resDeploy = await fetch(`https://api.vercel.com/v13/deployments${teamQueryDeploy}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -52,12 +54,12 @@ export async function POST(req: NextRequest) {
         target: 'production'
       }),
     })
+    
     const deployData = await resDeploy.json()
-    console.log('Deploy response:', deployData)
-    // No hacemos throw si falla, porque Vercel igual lo autodespliega por el link de GitHub
-
-        const deployData = await resDeploy.json()
-    console.log('Deploy response:', deployData)
+    
+    if (!resDeploy.ok) {
+      throw new Error(`FALLO DEPLOY: ${JSON.stringify(deployData)}`)
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -66,10 +68,8 @@ export async function POST(req: NextRequest) {
       projectId: projectData.id,
       deploy: deployData
     })
+
   } catch (e:any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
-  
   }
 }
