@@ -13,8 +13,7 @@ export default function AdminPanel() {
   const [resultado, setResultado] = useState<any>(null)
 
   useEffect(()=>{
-    setWebhookUrl(`${window.location.origin}/api/webhook/clientify`)
-    fetchLogs()
+  fetchLogs()
   },[])
 
   const fetchLogs = async () => {
@@ -100,11 +99,14 @@ export default function AdminPanel() {
         <input value={clientifyKey} onChange={e=>setClientifyKey(e.target.value)} placeholder="API Key Clientify" className="w-full border p-3 rounded-lg" />
         <button onClick={testClientify} className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-lg w-full">Probar Clientify</button>
       </div>
-      <div className="bg-white p-5 rounded-xl border shadow">
-        <h2 className="font-bold mb-3">2. Webhook para Clientify</h2>
-        <div className="bg-slate-900 text-green-400 p-3 rounded text-xs break-all">{webhookUrl}</div>
-        <button onClick={simulateWin} className="mt-3 w-full bg-slate-800 text-white py-3 rounded-lg">🚀 Simular Ganada</button>
-      </div>
+            {webhookUrl && (
+        <div className="bg-white p-5 rounded-xl border shadow border-green-500">
+          <h2 className="font-bold mb-3">2. Webhook generado para {form.nombreCliente || 'este cliente'}</h2>
+          <div className="bg-slate-900 text-green-400 p-3 rounded text-xs break-all">{webhookUrl}</div>
+          <p className="text-xs text-zinc-500 mt-2">Pega esta URL en Clientify de {form.nombreCliente}</p>
+          <button onClick={simulateWin} className="mt-3 w-full bg-slate-800 text-white py-3 rounded-lg">🚀 Simular Ganada</button>
+        </div>
+      )}
       <div className="bg-white p-5 rounded-xl border shadow">
         <h2 className="font-bold mb-3">3. Siigo (Fase 1 Simulación)</h2>
         <div className="grid grid-cols-3 gap-2">
