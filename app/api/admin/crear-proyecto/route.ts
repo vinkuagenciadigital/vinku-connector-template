@@ -7,7 +7,8 @@ export async function POST(req: NextRequest) {
 
     const VERCEL_TOKEN = process.env.VERCEL_TOKEN!
     const TEMPLATE_REPO = process.env.TEMPLATE_GITHUB_REPO!
-    const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+    const baseSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+    const cleanSlug = `${baseSlug}-conexion-clientify-siigo`
 
     // 1. Crear proyecto
     const resProject = await fetch('https://api.vercel.com/v10/projects', {
