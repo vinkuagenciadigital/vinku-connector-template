@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ 
         name: cleanSlug, 
         project: projectData.id, 
-        gitSource: { type: 'github', repo: TEMPLATE_REPO, ref: 'main' },
+        gitSource: { type: 'github', repoId: projectData.link.repoId, ref: 'main' },
         target: 'production'
       }),
     })
