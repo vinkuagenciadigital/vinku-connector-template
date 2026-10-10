@@ -46,7 +46,7 @@ export default function AdminPanel() {
     fetchLogs()
   }
 
-  const crearProyecto = async () => {
+    const crearProyecto = async () => {
     if(!form.slug ||!form.nombreCliente) return alert('Falta nombre y slug')
     setCreando(true)
     setResultado(null)
@@ -58,6 +58,9 @@ export default function AdminPanel() {
       })
       const data = await res.json()
       setResultado(data)
+      if(data.webhookUrl){
+        setWebhookUrl(data.webhookUrl) // <-- ESTA LÍNEA ES LA MAGIA
+      }
     } catch (e:any) {
       setResultado({ error: e.message })
     }
