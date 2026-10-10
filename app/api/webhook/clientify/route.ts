@@ -144,13 +144,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, log: entry })
 }
 
-// FIX: GET para que el panel del cliente pueda ver los eventos y para verificar que el webhook existe
 export async function GET() {
   return NextResponse.json({
+    ok: true,
     status: 'webhook_activo',
     cliente: process.env.CLIENTE_NOMBRE || 'test',
-    total_eventos: memoryLogs.length,
-    eventos: memoryLogs.slice(0, 20),
-    siigo_configurado:!!(process.env.SIIGO_USER && process.env.SIIGO_ACCESS_KEY)
+    eventos: memoryLogs.slice(0,20)
   })
 }
