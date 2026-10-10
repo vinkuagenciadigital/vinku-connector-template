@@ -7,14 +7,14 @@ export async function POST(req: NextRequest) {
 
     const VERCEL_TOKEN = process.env.VERCEL_TOKEN!
     const TEMPLATE_REPO = process.env.TEMPLATE_GITHUB_REPO!
-    const TEAM_ID = process.env.VERCEL_TEAM_ID || '' // agrega esta env var en tu fábrica
+    const TEAM_ID = process.env.VERCEL_TEAM_ID || ''
+    
     const baseSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
     const cleanSlug = `${baseSlug}-conexion-clientify-siigo`
 
     const teamQuery = TEAM_ID ? `?teamId=${TEAM_ID}` : ''
     const teamQueryDeploy = TEAM_ID ? `?forceNew=1&teamId=${TEAM_ID}` : '?forceNew=1'
 
-    // 1. Crear proyecto
     const resProject = await fetch(`https://api.vercel.com/v10/projects${teamQuery}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
@@ -24,13 +24,27 @@ export async function POST(req: NextRequest) {
         framework: 'nextjs',
       }),
     })
-    const projectData = await resProject.json()
+    let projectData = await resProject.json()
     if (!resProject.ok) throw new Error(JSON.stringify(projectData))
 
-    // 2. Env vars
+    let repoId = projectData?.link?.repoId
+    if (!repoId) {
+      await new Promise(r => setTimeout(r, 2000))
+      const resGet = await fetch(`https://api.vercel.com/v10/projects/${projectData.id}${teamQuery}`, {
+        headers: { Authorization: `Bearer ${VERCEL_TOKEN}` },
+      })
+      const projectFull = await resGet.json()
+      repoId = projectFull?.link?.repoId
+      projectData = projectFull
+    }
+    if (!repoId) throw new Error(`No se pudo obtener repoId`)
+
+    // DATOS SOLCIITADOS PARA CONECTAR CLIENTIFY Y SIIGO
     const envs = [
       { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey },
       { key: 'CLIENTE_NOMBRE', value: nombreCliente },
+      // { key: 'SIIGO_USER', value: siigoUser },
+      // { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey },
     ]
     for (const env of envs) {
       if(!env.value) continue
@@ -41,7 +55,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // 3. Deploy inicial - CORREGIDO
     await new Promise(r => setTimeout(r, 2500))
 
     const resDeploy = await fetch(`https://api.vercel.com/v13/deployments${teamQueryDeploy}`, {
@@ -50,23 +63,18 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ 
         name: cleanSlug, 
         project: projectData.id, 
-        gitSource: { type: 'github', repoId: projectData.link.repoId, ref: 'main' },
+        gitSource: { type: 'github', repo: TEMPLATE_REPO, repoId: repoId, ref: 'main' },
         target: 'production'
       }),
     })
     
     const deployData = await resDeploy.json()
-    
-    if (!resDeploy.ok) {
-      throw new Error(`FALLO DEPLOY: ${JSON.stringify(deployData)}`)
-    }
+    if (!resDeploy.ok) throw new Error(`FALLO DEPLOY: ${JSON.stringify(deployData)}`)
 
     return NextResponse.json({ 
       success: true, 
       url: `https://${cleanSlug}.vercel.app`, 
       webhookUrl: `https://${cleanSlug}.vercel.app/api/webhook/clientify`, 
-      projectId: projectData.id,
-      deploy: deployData
     })
 
   } catch (e:any) {
