@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 // =================================================================
 // OBJETIVO 1: MEMORIA TEMPORAL PARA EL PANEL /admin
 // Guardamos los últimos webhooks que llegan en memoria del servidor.
@@ -122,9 +124,9 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         (entry as any).faltantes_para_facturar = [
-       !dataParaSiigo.nit? "siigo_nit" : null,
-       !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
-       !dataParaSiigo.cantidad? "siigo_cantidad" : null,
+      !dataParaSiigo.nit? "siigo_nit" : null,
+      !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
+      !dataParaSiigo.cantidad? "siigo_cantidad" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
@@ -140,4 +142,15 @@ export async function POST(req: NextRequest) {
 
   // 5.4 - Respondemos a Clientify que todo OK (200). Si no respondemos 200, Clientify reintenta.
   return NextResponse.json({ ok: true, log: entry })
+}
+
+// FIX: GET para que el panel del cliente pueda ver los eventos y para verificar que el webhook existe
+export async function GET() {
+  return NextResponse.json({
+    status: 'webhook_activo',
+    cliente: process.env.CLIENTE_NOMBRE || 'test',
+    total_eventos: memoryLogs.length,
+    eventos: memoryLogs.slice(0, 20),
+    siigo_configurado:!!(process.env.SIIGO_USER && process.env.SIIGO_ACCESS_KEY)
+  })
 }
