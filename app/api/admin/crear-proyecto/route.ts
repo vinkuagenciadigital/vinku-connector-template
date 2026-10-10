@@ -40,14 +40,36 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Deploy inicial
-    await fetch(`https://api.vercel.com/v13/deployments`, {
+    await new Promise(r => setTimeout(r, 2500)) // Esperar que se guarden las env vars
+
+    const resDeploy = await fetch(`https://api.vercel.com/v13/deployments?forceNew=1`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: cleanSlug, project: projectData.id, gitSource: { type: 'github', repo: TEMPLATE_REPO, ref: 'main' } }),
+      body: JSON.stringify({ 
+        name: cleanSlug, 
+        project: projectData.id, 
+        gitSource: { type: 'github', repo: TEMPLATE_REPO, ref: 'main' },
+        target: 'production'
+      }),
     })
+    const deployData = await resDeploy.json()
+    console.log('Deploy response:', deployData)
+    // No hacemos throw si falla, porque Vercel igual lo autodespliega por el link de GitHub
 
-    return NextResponse.json({ success: true, url: `https://${cleanSlug}.vercel.app`, webhookUrl: `https://${cleanSlug}.vercel.app/api/webhook/clientify`, projectId: projectData.id })
+        const deployData = await resDeploy.json()
+    console.log('Deploy response:', deployData)
+
+    return NextResponse.json({ 
+      success: true, 
+      url: `https://${cleanSlug}.vercel.app`, 
+      webhookUrl: `https://${cleanSlug}.vercel.app/api/webhook/clientify`, 
+      projectId: projectData.id,
+      deploy: deployData
+    })
   } catch (e:any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+  
   }
 }
