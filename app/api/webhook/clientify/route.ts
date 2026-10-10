@@ -4,6 +4,8 @@ let memoryLogs: any[] = (global as any).memoryLogs || []
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
+  console.log('--- CLIENTIFY REAL PAYLOAD ---');
+  console.log(JSON.stringify(body, null, 2));
   const entry = {
     fecha: new Date().toISOString(),
     oportunidad_id: body.id || 'test_'+Date.now(),
