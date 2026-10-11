@@ -9,8 +9,20 @@ export async function POST(req: NextRequest) {
     const TEMPLATE_REPO = process.env.TEMPLATE_GITHUB_REPO!
     const TEAM_ID = process.env.VERCEL_TEAM_ID || ''
     
-    const baseSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
-    const cleanSlug = `${baseSlug}-conexion-clientify-siigo`
+    // 1. Normaliza
+    let baseSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-').replace(/^-|-$/g, '')
+
+    // 2. FIX SIIGO: Corrige si viene sin la o y evita duplicar el sufijo
+    baseSlug = baseSlug.replace(/siig$/i, 'siigo') // si termina en siig -> siigo
+    baseSlug = baseSlug.replace(/conexion-clientify-siig$/i, 'conexion-clientify-siigo')
+
+    let cleanSlug = baseSlug
+    if (!cleanSlug.includes('conexion-clientify-siigo')) {
+      cleanSlug = `${cleanSlug}-conexion-clientify-siigo`
+    }
+    // Garantía final: si por cualquier cosa aún termina en siig, lo corrige
+    cleanSlug = cleanSlug.replace(/-siig$/i, '-siigo')
+    cleanSlug = cleanSlug.slice(0, 96) // Vercel max 100, dejamos margen
 
     const teamQuery = TEAM_ID ? `?teamId=${TEAM_ID}` : ''
     const teamQueryDeploy = TEAM_ID ? `?forceNew=1&teamId=${TEAM_ID}` : '?forceNew=1'
@@ -39,28 +51,25 @@ export async function POST(req: NextRequest) {
     }
     if (!repoId) throw new Error(`No se pudo obtener repoId`)
 
-    // DATOS SOLCIITADOS PARA CONECTAR CLIENTIFY Y SIIGO
-   const envs = [
+    const envs = [
         { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey?.toString().trim() },
         { key: 'CLIENTE_NOMBRE', value: nombreCliente?.toString().trim() },
-     // { key: 'SIIGO_USER', value: siigoUser?.toString().trim() },
-     // { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey?.toString().trim() },
-   ]
+    ]
 
-       for (const env of envs) {
-          if(!env.value) continue
-    const isSecret = env.key.includes('API_KEY') || env.key.includes('ACCESS') || env.key.includes('USER')
-    await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env${teamQuery}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      key: env.key, 
-      value: env.value, 
-      type: isSecret ? 'sensitive' : 'plain',
-      target: ['production','preview','development'] 
-      }),
-    })
-    await new Promise(r => setTimeout(r, 800))
+    for (const env of envs) {
+      if(!env.value) continue
+      const isSecret = env.key.includes('API_KEY') || env.key.includes('ACCESS') || env.key.includes('USER')
+      await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env${teamQuery}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          key: env.key, 
+          value: env.value, 
+          type: isSecret ? 'sensitive' : 'plain',
+          target: ['production','preview','development'] 
+        }),
+      })
+      await new Promise(r => setTimeout(r, 800))
     }
 
     await new Promise(r => setTimeout(r, 2500))
