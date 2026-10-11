@@ -30,10 +30,10 @@ const isClientProject = !!nombreCliente
 
 const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
 
-  // SI ES FÁBRICA
+  // SI ES FÁBRICA -> muestra link a /admin en vez de hacer redirect (el redirect colgaba el build)
   if (!isClientProject) {
     return (
-      <div className="min-h-screen bg-white text-black p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-[#EDEBFE] text-black p-6 flex items-center justify-center">
         <div className="text-center bg-white border border-[#8A6FE8]/20 rounded-2xl p-8 shadow-sm">
           <h1 className="text-2xl font-bold mb-4 text-black">Fábrica Vinku</h1>
           <Link href="/admin" className="inline-block bg-[#8A6FE8] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#7a5fe0] transition-colors">Ir al Admin</Link>
@@ -43,7 +43,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
   }
 
   return (
-    <div className="min-h-screen bg-white text-black p-6">
+    <div className="min-h-screen bg-[#EDEBFE] text-black p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-black">Conector Activo: {nombreCliente}</h1>
@@ -51,18 +51,18 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
         </div>
 
         {/* WEBHOOK */}
-        <div className="bg-[#8A6FE8] border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
           <h2 className="font-semibold mb-2 text-black">1. Webhook para Clientify</h2>
           <p className="text-sm text-black/60 mb-3">Pega esta URL en Clientify &gt; Automatizaciones &gt; Cuando oportunidad ganada &gt; Webhook</p>
           <div className="flex gap-2">
-            <code className="flex-1 bg-white p-3 rounded-lg text-black text-sm break-all border border-[#8A6FE8]/30">{webhookUrl}</code>
+            <code className="flex-1 bg-[#EDEBFE] p-3 rounded-lg text-black text-sm break-all border border-[#8A6FE8]/30">{webhookUrl}</code>
             <CopyButton text={webhookUrl} />
           </div>
         </div>
 
         {/* PANEL DE EVENTOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#8A6FE8] border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold mb-4 text-black">Oportunidades Ganadas (Eventos)</h2>
             <div className="text-sm text-black/60">
               Aquí irán los logs que lleguen por el webhook.
@@ -70,7 +70,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
             </div>
           </div>
 
-          <div className="bg-[#8A6FE8] border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold mb-4 text-black">Facturas Generadas en Siigo</h2>
             <div className="text-sm text-black/60">
               Aquí muestras la respuesta de Siigo (id factura, estado).
