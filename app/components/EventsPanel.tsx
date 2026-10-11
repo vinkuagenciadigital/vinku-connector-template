@@ -27,6 +27,8 @@ export default function EventsPanel() {
       {eventos.map((ev: any, idx: number) => {
         const s = ev.datos_completos_siigo
         const listo = ev.listo_para_siigo
+        // FIX NOMBRE PRODUCTO - obtener nombre real
+        const nombreProducto = s?.producto_nombre || s?.productos_completos?.[0]?.name || s?.productos_completos?.[0]?.product_name || null
 
         return (
           <div key={idx} className="border border-[#8A6FE8]/20 rounded-xl p-3 text-sm bg-white">
@@ -74,11 +76,17 @@ export default function EventsPanel() {
                   <p>📞 {s.telefono || 'sin teléfono'}</p>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-[#8A6FE8]/10">
-                  <span className="bg-white border border-[#8A6FE8]/20 px-2 py-1 rounded font-mono font-bold">{s.sku}</span>
-                  <span className="text-black/60">x{s.cantidad}</span>
-                  <span className="ml-auto font-bold text-black">${Number(s.precio || 0).toLocaleString()}</span>
-                  <span className="text-[10px] text-black/40">Pago: {s.forma_pago_dian}</span>
+                {/* FIX NOMBRE PRODUCTO - ahora muestra nombre + sku pequeño */}
+                <div className="pt-2 border-t border-[#8A6FE8]/10">
+                  {nombreProducto && (
+                    <p className="text-[13px] font-bold text-black leading-tight mb-1">{nombreProducto}</p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="bg-white border border-[#8A6FE8]/20 px-2 py-1 rounded font-mono font-bold text-[11px]">{s.sku}</span>
+                    <span className="text-black/60 text-[11px]">x{s.cantidad}</span>
+                    <span className="ml-auto font-bold text-black">${Number(s.precio || 0).toLocaleString()}</span>
+                    <span className="text-[10px] text-black/40">Pago: {s.forma_pago_dian}</span>
+                  </div>
                 </div>
               </div>
             )}
