@@ -74,7 +74,7 @@ function extractId(input: any): string | null {
   return null
 }
 
-// NUEVO - Para traer datos de Empresa y Contacto
+// NUEVO - Para traer datos de Empresa y Contacto - COMPATIBLE V1/V2
 async function getFullContact(apiKey: string, contactInput: any) {
   const contactId = extractId(contactInput)
   if (!contactId) {
@@ -82,14 +82,19 @@ async function getFullContact(apiKey: string, contactInput: any) {
     return null
   }
   console.log(`Buscando contacto ID real: ${contactId}`);
-  const res = await fetch(`${CLIENTIFY_API}contacts/${contactId}/`, {
-    headers: { "Authorization": `Token ${apiKey}` }
-  });
-  if (!res.ok) {
-    console.log('❌ getFullContact falló:', res.status, await res.text().then(t=>t.substring(0,500)));
-    return null;
+  // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
+  for (const ver of ["v2", "v1"]) {
+    const res = await fetch(`https://api.clientify.net/${ver}/contacts/${contactId}/`, {
+      headers: { "Authorization": `Token ${apiKey}` }
+    });
+    if (res.ok) {
+      console.log(`✅ Contacto encontrado en ${ver}`);
+      return res.json();
+    }
+    console.log(`⚠️ Contacto no encontrado en ${ver}: ${res.status}`);
   }
-  return res.json();
+  console.log('❌ getFullContact falló en V1 y V2');
+  return null;
 }
 async function getFullCompany(apiKey: string, companyInput: any) {
   const companyId = extractId(companyInput)
@@ -98,14 +103,20 @@ async function getFullCompany(apiKey: string, companyInput: any) {
     return null
   }
   console.log(`Buscando empresa ID real: ${companyId}`);
-  const res = await fetch(`${CLIENTIFY_API}companies/${companyId}/`, {
-    headers: { "Authorization": `Token ${apiKey}` }
-  });
-  if (!res.ok) {
-    console.log('❌ getFullCompany falló:', res.status, await res.text().then(t=>t.substring(0,500)));
-    return null;
+  // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
+  for (const ver of ["v2", "v1"]) {
+    const res = await fetch(`https://api.clientify.net/${ver}/companies/${companyId}/`, {
+      headers: { "Authorization": `Token ${apiKey}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log(`✅ Empresa encontrada en ${ver}:`, JSON.stringify(data).substring(0,800));
+      return data;
+    }
+    console.log(`⚠️ Empresa no encontrada en ${ver}: ${res.status}`);
   }
-  return res.json();
+  console.log('❌ getFullCompany falló en V1 y V2');
+  return null;
 }
 
 // =================================================================
@@ -263,7 +274,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-         ...companyData,
+        ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -328,11 +339,11 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         ;(entry as any).faltantes_para_facturar = [
-    !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
-    !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
-    !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
-    !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
-    !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+   !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+   !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+   !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+   !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+   !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
