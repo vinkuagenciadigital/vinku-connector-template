@@ -28,7 +28,6 @@ const isClientProject =!!nombreCliente
 
 const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
 
-  // SI ES FÁBRICA -> muestra link a /admin en vez de hacer redirect (el redirect colgaba el build)
   if (!isClientProject) {
     return (
       <div className="min-h-screen bg-[#EDEBFE] text-black p-6 flex items-center justify-center">
@@ -58,7 +57,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
           </div>
         </div>
 
-        {/* === NUEVO: CAMPOS PERSONALIZADOS REQUERIDOS EN CLIENTIFY === */}
+        {/* CAMPOS PERSONALIZADOS - SIN SECCIÓN V1 */}
         <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
           <h2 className="font-semibold mb-1 text-black">2. Campos personalizados que debes crear en Clientify</h2>
           <p className="text-sm text-black/60 mb-5">Crea estos campos con el nombre exacto (minúsculas). Clientify &gt; Contactos &gt; Campos personalizados. Con botón de copiar.</p>
@@ -91,8 +90,9 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-           
         {/* PANEL DE EVENTOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
