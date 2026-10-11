@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-        ...companyData,
+       ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -292,19 +292,32 @@ export async function POST(req: NextRequest) {
         const dianCodes = getDianCodes(ciudadTxt, estadoTxt)
 
         // PARCHE V3 - Buscar SKU real en /products/ porque products[0].sku viene vacío en deal
+        // FIX PRODUCTO NOMBRE - También busca nombre real
         let skuReal = fullDeal.products?.[0]?.sku || fullDeal.products?.[0]?.code || null
-        if (!skuReal && fullDeal.products?.[0]?.product_id) {
+        let nombreReal = fullDeal.products?.[0]?.name || fullDeal.products?.[0]?.product_name || fullDeal.products?.[0]?.title || null
+        if ((!skuReal ||!nombreReal) && fullDeal.products?.[0]?.product_id) {
           try {
             const pRes = await fetch(`${CLIENTIFY_API}products/${fullDeal.products[0].product_id}/`, {
               headers: { "Authorization": `Token ${apiKey}` }
             });
             const pData = await pRes.json();
             console.log('PRODUCT RAW:', JSON.stringify(pData).substring(0, 2500));
-            skuReal = pData.sku || pData.code || pData.reference || pData.name || null
+            skuReal = skuReal || pData.sku || pData.code || pData.reference || null
+            nombreReal = nombreReal || pData.name || pData.title || null
           } catch(e: any){ console.log('Error producto', e.message) }
-        } else if (skuReal) {
+        } else if (skuReal || nombreReal) {
            console.log('PRODUCT RAW directo del deal:', JSON.stringify(fullDeal.products?.[0]).substring(0, 2500));
         }
+
+        // FIX PRODUCTO NOMBRE - Enriquecer productos con nombre y sku para que el panel muestre nombre
+        const productosEnriquecidos = (fullDeal.products || []).map((p: any, idx: number) => ({
+         ...p,
+          sku: idx === 0? (skuReal || p.sku || p.code) : (p.sku || p.code),
+          name: idx === 0? (nombreReal || p.name || p.product_name || p.title || 'Producto') : (p.name || p.product_name || p.title || 'Producto'),
+          product_name: idx === 0? (nombreReal || p.name || p.product_name) : (p.name || p.product_name),
+          quantity: p.quantity || 1,
+          price: p.price || p.unit_price || 0
+        }))
 
         // Armamos el objeto que cualquier cliente Siigo necesita para facturar
         const dataParaSiigo = {
@@ -322,12 +335,13 @@ export async function POST(req: NextRequest) {
           telefono: clienteData?.phone || clienteData?.phones?.[0]?.phone || null,
           // SKU nativo de PRODUCTOS
           sku: skuReal || getCustomValue(fullDeal.custom_fields, "siigo_producto_sku") || null,
+          producto_nombre: nombreReal || null, // FIX PRODUCTO NOMBRE - nuevo campo para el panel
           cantidad: fullDeal.products?.[0]?.quantity || getCustomValue(fullDeal.custom_fields, "siigo_cantidad") || 1,
           precio: fullDeal.products?.[0]?.price || fullDeal.amount || entry.valor,
           forma_pago_dian: getCustomValue(fullDeal.custom_fields, "siigo_forma_pago_dian") || "1",
           decision_facturacion: facturarA || "auto",
           // Debug
-          productos_completos: fullDeal.products || [],
+          productos_completos: productosEnriquecidos || [], // FIX PRODUCTO NOMBRE - ahora con nombre incluido
           custom_fields_encontrados: fullDeal.custom_fields || [],
           direccion_completa_obj: mainAddr,
           cliente_fuente: esEmpresa? 'EMPRESA' : 'CONTACTO'
@@ -339,11 +353,11 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         ;(entry as any).faltantes_para_facturar = [
-   !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
-   !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
-   !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
-   !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
-   !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+  !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+  !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+  !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+  !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+  !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
