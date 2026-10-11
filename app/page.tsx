@@ -24,7 +24,7 @@ export default function Home() {
 const nombreCliente = process.env.CLIENTE_NOMBRE
 let rawUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'tu-proyecto.vercel.app'
 rawUrl = rawUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
-const vercelUrl = rawUrl.replace(/-[a-z0-9]{8,}-vinku\.vercel\.app/i, '.vercel.app').replace(/-[a-z0-9]{8,}-vinku/i, '').replace('.vercel.app', '') + '.vercel.app'
+const vercelUrl = rawUrl.replace('.vercel.app', '') + '.vercel.app'
 
 const isClientProject = !!nombreCliente
 
