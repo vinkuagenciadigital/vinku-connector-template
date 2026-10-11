@@ -19,6 +19,7 @@ export const revalidate = 0
 
 import Link from 'next/link'
 import CopyButton from './components/CopyButton'
+import EventsPanel from './components/EventsPanel'
 
 export default function Home() {
 const nombreCliente = process.env.CLIENTE_NOMBRE
