@@ -18,6 +18,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 import Link from 'next/link'
+import CopyButton from './components/CopyButton'
 
 function CopyButton({ text }: { text: string }) {
   // Componente cliente inline sin necesidad de otro archivo
