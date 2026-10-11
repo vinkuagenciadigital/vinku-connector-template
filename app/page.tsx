@@ -53,7 +53,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
         {/* WEBHOOK */}
         <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
           <h2 className="font-semibold mb-2 text-black">1. Webhook para Clientify</h2>
-          <p className="text-sm text-black/60 mb-3">Pega esta URL en Clientify &gt; Automatizaciones &gt; Cuando oportunidad ganada &gt; Webhook</p>
+          <p className="text-sm text-black/60 mb-3">Pega esta URL en Clientify &gt; Ajustes &gt; Integraciones &gt; Integradores &gt; Webhooks &gt; Editar &gt;Webhook de oportunidad</p>
           <div className="flex gap-2">
             <code className="flex-1 bg-[#EDEBFE] p-3 rounded-lg text-black text-sm break-all border border-[#8A6FE8]/30">{webhookUrl}</code>
             <CopyButton text={webhookUrl} />
