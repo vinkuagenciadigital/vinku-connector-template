@@ -51,7 +51,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
         </div>
 
         {/* WEBHOOK */}
-        <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+        <div className="bg-[#8A6FE8] border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
           <h2 className="font-semibold mb-2 text-black">1. Webhook para Clientify</h2>
           <p className="text-sm text-black/60 mb-3">Pega esta URL en Clientify &gt; Automatizaciones &gt; Cuando oportunidad ganada &gt; Webhook</p>
           <div className="flex gap-2">
@@ -62,7 +62,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
 
         {/* PANEL DE EVENTOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+          <div className="bg-[#8A6FE8] border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold mb-4 text-black">Oportunidades Ganadas (Eventos)</h2>
             <div className="text-sm text-black/60">
               Aquí irán los logs que lleguen por el webhook.
@@ -70,7 +70,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
             </div>
           </div>
 
-          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+          <div className="bg-[#8A6FE8] border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold mb-4 text-black">Facturas Generadas en Siigo</h2>
             <div className="text-sm text-black/60">
               Aquí muestras la respuesta de Siigo (id factura, estado).
