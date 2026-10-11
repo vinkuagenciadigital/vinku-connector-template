@@ -19,6 +19,24 @@ let memoryLogs: any[] = (global as any).memoryLogs || []
 const CLIENTIFY_API = "https://api.clientify.net/v1/";
 
 // =================================================================
+// OBJETIVO 2.1: TABLA DIAN - Conversión de Dirección principal a código DIAN
+// Clientify trae Ciudad en texto "Medellín", Siigo necesita "05001"
+// =================================================================
+function getDianCodes(ciudad: string, estado: string): { city_code: string, state_code: string } | null {
+  const c = (ciudad || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  if (c.includes("bogota")) return { city_code: "11001", state_code: "11" }
+  if (c.includes("medellin")) return { city_code: "05001", state_code: "05" }
+  if (c.includes("cali")) return { city_code: "76001", state_code: "76" }
+  if (c.includes("barranquilla")) return { city_code: "08001", state_code: "08" }
+  if (c.includes("cartagena")) return { city_code: "13001", state_code: "13" }
+  if (c.includes("bucaramanga")) return { city_code: "68001", state_code: "68" }
+  if (c.includes("cucuta")) return { city_code: "54001", state_code: "54" }
+  if (c.includes("pereira")) return { city_code: "66001", state_code: "66" }
+  if (c.includes("santa marta")) return { city_code: "47001", state_code: "47" }
+  return null
+}
+
+// =================================================================
 // OBJETIVO 3: FUNCIÓN getFullDeal - OBTENCIÓN DE DATOS COMPLETOS
 // Por qué existe: El webhook que dispara Clientify solo avisa "se movió la
 // oportunidad X a Ganada" y trae 4 datos básicos (nombre, monto, email).
@@ -39,6 +57,22 @@ async function getFullDeal(apiKey: string, dealId: string) {
   return res.json();
 }
 
+// NUEVO - Para traer datos de Empresa y Contacto
+async function getFullContact(apiKey: string, contactId: string) {
+  const res = await fetch(`${CLIENTIFY_API}contacts/${contactId}/`, {
+    headers: { "Authorization": `Token ${apiKey}` }
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+async function getFullCompany(apiKey: string, companyId: string) {
+  const res = await fetch(`${CLIENTIFY_API}companies/${companyId}/`, {
+    headers: { "Authorization": `Token ${apiKey}` }
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 // =================================================================
 // OBJETIVO 4: FUNCIÓN getCustomValue - BUSCADOR DE CAMPOS PERSONALIZADOS
 // Por qué existe: Los campos personalizados de Clientify vienen en una lista
@@ -51,7 +85,11 @@ async function getFullDeal(apiKey: string, dealId: string) {
 function getCustomValue(custom_fields: any[], name: string) {
   if (!custom_fields) return null;
   const f = custom_fields.find((c: any) => c.field === name || c.name === name);
-  return f?.value || null;
+  let v = f?.value || null;
+  // Soporte para valores tipo "13 | 13 - CC" o "1 - Contado" -> extrae solo el número
+  if (typeof v === 'string' && v.includes('|')) v = v.split('|')[0].trim()
+  if (typeof v === 'string' && /^\d+\s*-/.test(v)) v = v.split('-')[0].trim()
+  return v;
 }
 
 // =================================================================
@@ -88,7 +126,7 @@ export async function POST(req: NextRequest) {
   // 5.3 - Creamos una entrada resumida para el panel /admin
   // Usamos || porque el payload de prueba y el real vienen en formatos distintos
   // body.id vs body.data.id, body.contact.name vs body.data.contact_name
-  const entry = {
+  const entry: any = {
     fecha: new Date().toISOString(),
     oportunidad_id: body.id || body.data?.id || 'test_'+Date.now(),
     contact: body.contact?.name || body.data?.contact_name || body.name || 'Contacto Test',
@@ -123,31 +161,66 @@ export async function POST(req: NextRequest) {
       const fullDeal = await getFullDeal(apiKey, dealId);
 
       if (fullDeal) {
+        // NUEVA LÓGICA - Detectar si facturamos a Empresa o a Contacto
+        let clienteData: any = null
+        let esEmpresa = false
+        if (fullDeal.company) {
+          const companyId = typeof fullDeal.company === 'object'? fullDeal.company.id : fullDeal.company
+          clienteData = await getFullCompany(apiKey, companyId)
+          esEmpresa = true
+        } else if (fullDeal.contact) {
+          const contactId = typeof fullDeal.contact === 'object'? fullDeal.contact.id : fullDeal.contact
+          clienteData = await getFullContact(apiKey, contactId)
+        }
+
+        // NUEVA LÓGICA - Usar Dirección principal (campo tipo maps)
+        const mainAddr = clienteData?.main_address || clienteData?.address || {}
+        const ciudadTxt = mainAddr.city || clienteData?.city || ''
+        const estadoTxt = mainAddr.state || clienteData?.state || ''
+        const direccionTxt = mainAddr.address || mainAddr.street || ''
+        const dianCodes = getDianCodes(ciudadTxt, estadoTxt)
+
         // Armamos el objeto que cualquier cliente Siigo necesita para facturar
         const dataParaSiigo = {
-          nit: getCustomValue(fullDeal.custom_fields, "siigo_nit"),
-          ciudad_dian: getCustomValue(fullDeal.custom_fields, "siigo_ciudad_dian") || getCustomValue(fullDeal.custom_fields, "siigo_ciudad_facturacion"),
-          direccion: getCustomValue(fullDeal.custom_fields, "siigo_direccion_fact"),
-          // El SKU puede venir de un campo personalizado o del primer producto agregado a la oportunidad
-          sku: getCustomValue(fullDeal.custom_fields, "siigo_producto_sku") || fullDeal.products?.[0]?.sku || null,
-          // La cantidad igual, del campo personalizado o de products.quantity
-          cantidad: getCustomValue(fullDeal.custom_fields, "siigo_cantidad") || fullDeal.products?.[0]?.quantity || null,
+          // NIT nativo: CONTACTOS.Número de Identificación Fiscal / EMPRESAS.ID fiscal
+          nit: clienteData?.tax_id || clienteData?.nif || clienteData?.id_fiscal || getCustomValue(fullDeal.custom_fields, "siigo_nit") || null,
+          tipo_doc_dian: getCustomValue(clienteData?.custom_fields, "siigo_tipo_doc_dian") || (esEmpresa? "31" : "13"),
+          responsable_iva: getCustomValue(clienteData?.custom_fields, "siigo_responsable_iva") || null,
+          razon_social: clienteData?.company_name || clienteData?.name || clienteData?.razon_social || entry.contact,
+          // Dirección principal
+          direccion: direccionTxt || getCustomValue(fullDeal.custom_fields, "siigo_direccion_fact") || null,
+          ciudad_nombre: ciudadTxt,
+          estado_nombre: estadoTxt,
+          ciudad_dian: getCustomValue(clienteData?.custom_fields, "siigo_ciudad_dian") || dianCodes?.city_code || getCustomValue(fullDeal.custom_fields, "siigo_ciudad_dian") || null,
+          email: clienteData?.email || clienteData?.emails?.[0] || null,
+          telefono: clienteData?.phone || null,
+          // SKU nativo de PRODUCTOS
+          sku: fullDeal.products?.[0]?.sku || fullDeal.products?.[0]?.code || getCustomValue(fullDeal.custom_fields, "siigo_producto_sku") || null,
+          cantidad: fullDeal.products?.[0]?.quantity || getCustomValue(fullDeal.custom_fields, "siigo_cantidad") || 1,
+          precio: fullDeal.products?.[0]?.price || fullDeal.amount || entry.valor,
+          forma_pago_dian: getCustomValue(fullDeal.custom_fields, "siigo_forma_pago_dian") || "1",
+          // Debug
           productos_completos: fullDeal.products || [],
-          custom_fields_encontrados: fullDeal.custom_fields || []
+          custom_fields_encontrados: fullDeal.custom_fields || [],
+          direccion_completa_obj: mainAddr,
+          cliente_fuente: esEmpresa? 'EMPRESA' : 'CONTACTO'
         };
 
         // Guardamos el resultado del enriquecimiento en el mismo log
         (entry as any).datos_completos_siigo = dataParaSiigo;
+        (entry as any).cliente_data_raw = clienteData
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
-        (entry as any).faltantes_para_facturar = [
-    !dataParaSiigo.nit? "siigo_nit" : null,
-    !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
-    !dataParaSiigo.cantidad? "siigo_cantidad" : null,
+        ;(entry as any).faltantes_para_facturar = [
+         !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+         !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+         !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+         !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+         !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
-        (entry as any).listo_para_siigo = (entry as any).faltantes_para_facturar.length === 0;
+        ;(entry as any).listo_para_siigo = (entry as any).faltantes_para_facturar.length === 0;
 
         console.log("📦 Datos para Siigo:", dataParaSiigo);
       }
