@@ -46,7 +46,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
     <div className="min-h-screen bg-[#EDEBFE] text-black p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-black">Conector Activo: {nombreCliente}</h1>
+          <h1 className="text-3xl font-bold text-black">Conector Activo: <span className="text-[#8A6FE8]">{nombreCliente}</span></h1>
           <p className="text-black/60">Clientify → Siigo</p>
         </div>
 
