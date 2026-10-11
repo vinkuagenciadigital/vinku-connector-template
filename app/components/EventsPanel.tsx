@@ -29,6 +29,7 @@ export default function EventsPanel() {
         const listo = ev.listo_para_siigo
         // FIX NOMBRE PRODUCTO - obtener nombre real
         const nombreProducto = s?.producto_nombre || s?.productos_completos?.[0]?.name || s?.productos_completos?.[0]?.product_name || null
+        const estadoLimpio = (ev.estado || '').replace(' - Simulación F1','').replace('Simulación F1','').trim()
 
         return (
           <div key={idx} className="border border-[#8A6FE8]/20 rounded-xl p-3 text-sm bg-white">
@@ -44,7 +45,7 @@ export default function EventsPanel() {
             </div>
 
             <div className="text-[11px] mt-2 text-black/60">
-              {ev.estado} • Factura a: <b className="text-black">{s?.cliente_fuente || '—'}</b> ({s?.decision_facturacion || 'auto'})
+              {estadoLimpio} • Factura a: <b className="text-black">{s?.cliente_fuente || '—'}</b>
             </div>
 
             {/* NUEVO - Información descriptiva en lugar de código */}
