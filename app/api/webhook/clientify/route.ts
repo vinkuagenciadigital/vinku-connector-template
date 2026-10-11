@@ -69,6 +69,19 @@ export async function POST(req: NextRequest) {
   console.log('--- CLIENTIFY REAL PAYLOAD ---');
   console.log(JSON.stringify(body, null, 2));
 
+  // ===== DEDUP FIX - evita doble evento de Clientify =====
+  const incomingId = String(body.id || body.data?.id || '')
+  const now = Date.now()
+  const last = memoryLogs[0] as any
+  if (last && incomingId && String(last.oportunidad_id) === incomingId) {
+    const lastTime = new Date(last.fecha).getTime()
+    if (!isNaN(lastTime) && (now - lastTime) < 10000) {
+      console.log(`♻️ Duplicado ignorado para deal ${incomingId} (menos de 10s)`)
+      return NextResponse.json({ ok: true, duplicate: true, id: incomingId })
+    }
+  }
+  // ===== FIN DEDUP FIX =====
+
   // 5.3 - Creamos una entrada resumida para el panel /admin
   // Usamos || porque el payload de prueba y el real vienen en formatos distintos
   // body.id vs body.data.id, body.contact.name vs body.data.contact_name
@@ -82,6 +95,7 @@ export async function POST(req: NextRequest) {
   }
   // Lo ponemos de primero en la lista de logs
   memoryLogs.unshift(entry)
+  if (memoryLogs.length > 20) memoryLogs.pop()
 
   // =================================================================
   // OBJETIVO 6: ENRIQUECIMIENTO DE DATOS PARA FACTURACIÓN SIIGO
@@ -124,9 +138,9 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         (entry as any).faltantes_para_facturar = [
-      !dataParaSiigo.nit? "siigo_nit" : null,
-      !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
-      !dataParaSiigo.cantidad? "siigo_cantidad" : null,
+     !dataParaSiigo.nit? "siigo_nit" : null,
+     !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
+     !dataParaSiigo.cantidad? "siigo_cantidad" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
