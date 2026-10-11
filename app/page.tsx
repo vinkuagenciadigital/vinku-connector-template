@@ -30,55 +30,55 @@ const isClientProject = !!nombreCliente
 
 const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
 
-  // SI ES FÁBRICA -> muestra link a /admin en vez de hacer redirect (el redirect colgaba el build)
+  // SI ES FÁBRICA
   if (!isClientProject) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white p-6 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Fábrica Vinku</h1>
-          <Link href="/admin" className="bg-white text-black px-6 py-3 rounded-lg">Ir al Admin</Link>
+      <div className="min-h-screen bg-[#EDEBFE] text-black p-6 flex items-center justify-center">
+        <div className="text-center bg-white border border-[#8A6FE8]/20 rounded-2xl p-8 shadow-sm">
+          <h1 className="text-2xl font-bold mb-4 text-black">Fábrica Vinku</h1>
+          <Link href="/admin" className="inline-block bg-[#8A6FE8] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#7a5fe0] transition-colors">Ir al Admin</Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-6">
+    <div className="min-h-screen bg-[#EDEBFE] text-black p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Conector Activo: {nombreCliente}</h1>
-          <p className="text-zinc-400">Clientify → Siigo</p>
+          <h1 className="text-3xl font-bold text-black">Conector Activo: {nombreCliente}</h1>
+          <p className="text-black/60">Clientify → Siigo</p>
         </div>
 
         {/* WEBHOOK */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-          <h2 className="font-semibold mb-2">1. Webhook para Clientify</h2>
-          <p className="text-sm text-zinc-400 mb-3">Pega esta URL en Clientify &gt; Automatizaciones &gt; Cuando oportunidad ganada &gt; Webhook</p>
+        <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+          <h2 className="font-semibold mb-2 text-black">1. Webhook para Clientify</h2>
+          <p className="text-sm text-black/60 mb-3">Pega esta URL en Clientify &gt; Automatizaciones &gt; Cuando oportunidad ganada &gt; Webhook</p>
           <div className="flex gap-2">
-            <code className="flex-1 bg-black p-3 rounded-lg text-green-400 text-sm break-all border border-zinc-800">{webhookUrl}</code>
+            <code className="flex-1 bg-[#EDEBFE] p-3 rounded-lg text-black text-sm break-all border border-[#8A6FE8]/30">{webhookUrl}</code>
             <CopyButton text={webhookUrl} />
           </div>
         </div>
 
         {/* PANEL DE EVENTOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-            <h2 className="font-semibold mb-4">Oportunidades Ganadas (Eventos)</h2>
-            <div className="text-sm text-zinc-500">
+          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+            <h2 className="font-semibold mb-4 text-black">Oportunidades Ganadas (Eventos)</h2>
+            <div className="text-sm text-black/60">
               Aquí irán los logs que lleguen por el webhook.
-              Conecta <code>/api/webhook/clientify</code> GET para verlos.
+              Conecta <code className="bg-[#EDEBFE] px-1 py-0.5 rounded text-black">/api/webhook/clientify</code> GET para verlos.
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-            <h2 className="font-semibold mb-4">Facturas Generadas en Siigo</h2>
-            <div className="text-sm text-zinc-500">
+          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+            <h2 className="font-semibold mb-4 text-black">Facturas Generadas en Siigo</h2>
+            <div className="text-sm text-black/60">
               Aquí muestras la respuesta de Siigo (id factura, estado).
             </div>
           </div>
         </div>
 
-        <div className="text-xs text-zinc-600 pt-6">
+        <div className="text-xs text-black/40 pt-6">
           Project: {vercelUrl} • Cliente: {nombreCliente}
         </div>
       </div>
