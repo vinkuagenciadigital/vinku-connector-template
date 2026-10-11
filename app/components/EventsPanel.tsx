@@ -23,24 +23,77 @@ export default function EventsPanel() {
   }
 
   return (
-    <div className="space-y-3 max-h-[500px] overflow-auto">
-      {eventos.map((ev: any, idx: number) => (
-        <div key={idx} className="border border-[#8A6FE8]/20 rounded-xl p-3 text-sm">
-          <div className="font-semibold text-black">{ev.contact} - ${ev.valor}</div>
-          <div className="text-xs text-black/50">{ev.fecha?.slice(0,19)} • ID: {ev.oportunidad_id}</div>
-          <div className="text-xs mt-1">{ev.estado}</div>
-          {ev.datos_completos_siigo && (
-            <pre className="text-[10px] bg-[#EDEBFE] p-2 mt-2 rounded overflow-auto text-black">
-              {JSON.stringify(ev.datos_completos_siigo, null, 2)}
-            </pre>
-          )}
-          {ev.faltantes_para_facturar?.length > 0? (
-            <div className="text-xs text-red-500 mt-1">Falta: {ev.faltantes_para_facturar.join(', ')}</div>
-          ) : (
-            <div className="text-xs text-green-600 mt-1">✅ Listo para Siigo</div>
-          )}
-        </div>
-      ))}
+    <div className="space-y-3 max-h-[500px] overflow-auto pr-1">
+      {eventos.map((ev: any, idx: number) => {
+        const s = ev.datos_completos_siigo
+        const listo = ev.listo_para_siigo
+
+        return (
+          <div key={idx} className="border border-[#8A6FE8]/20 rounded-xl p-3 text-sm bg-white">
+            {/* Header */}
+            <div className="flex justify-between items-start gap-2">
+              <div>
+                <div className="font-semibold text-black text-[13px]">{s?.razon_social || ev.contact} - ${ev.valor}</div>
+                <div className="text-xs text-black/50">{ev.fecha?.slice(0,19)} • ID: {ev.oportunidad_id}</div>
+              </div>
+              <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap border ${listo? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
+                {listo? '✅ LISTO' : '⚠️ FALTA'}
+              </span>
+            </div>
+
+            <div className="text-[11px] mt-2 text-black/60">
+              {ev.estado} • Factura a: <b className="text-black">{s?.cliente_fuente || '—'}</b> ({s?.decision_facturacion || 'auto'})
+            </div>
+
+            {/* NUEVO - Información descriptiva en lugar de código */}
+            {s && (
+              <div className="mt-3 bg-[#F8F7FF] border border-[#8A6FE8]/10 rounded-lg p-3 space-y-2.5 text-[11px]">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-black/40">NIT / Documento</p>
+                    <p className={`font-semibold ${!s.nit? 'text-red-500' : 'text-black'}`}>
+                      {s.nit || '— sin NIT —'} <span className="text-black/40 font-normal">({s.tipo_doc_dian})</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-black/40">Responsable IVA</p>
+                    <p className="font-semibold text-black">{s.responsable_iva || '—'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-black/40">Dirección DIAN</p>
+                  <p className="text-black leading-snug">
+                    {s.direccion || '— sin dirección —'}<br/>
+                    <span className="text-black/60">{s.ciudad_nombre} {s.estado_nombre && `• ${s.estado_nombre}`} • Código: <b>{s.ciudad_dian || '—'}</b></span>
+                  </p>
+                </div>
+
+                <div className="text-black/60 space-y-0.5">
+                  <p>📧 {s.email || 'sin email'} </p>
+                  <p>📞 {s.telefono || 'sin teléfono'}</p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-[#8A6FE8]/10">
+                  <span className="bg-white border border-[#8A6FE8]/20 px-2 py-1 rounded font-mono font-bold">{s.sku}</span>
+                  <span className="text-black/60">x{s.cantidad}</span>
+                  <span className="ml-auto font-bold text-black">${Number(s.precio || 0).toLocaleString()}</span>
+                  <span className="text-[10px] text-black/40">Pago: {s.forma_pago_dian}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Faltantes / Listo */}
+            {ev.faltantes_para_facturar?.length > 0? (
+              <div className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 rounded-lg p-2">
+                <b className="text-[10px] uppercase">Falta para Siigo:</b> {ev.faltantes_para_facturar.join(', ')}
+              </div>
+            ) : (
+              <div className="text-xs text-green-600 mt-2 bg-green-50 border border-green-200 rounded-lg p-2 font-semibold">✅ Listo para Siigo</div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
