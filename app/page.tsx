@@ -1,3 +1,19 @@
+/**
+ * PAGE: / (app/page.tsx) - LANDING INTELIGENTE / DUAL
+ * ------------------------------------------------------------------
+ * Este es el archivo raíz del template vinku-connector-template.
+ * Sirve para 2 cosas distintas dependiendo de las ENV VARS:
+ *
+ * 1. SI ES FÁBRICA (NO existe CLIENTE_NOMBRE en.env):
+ * -> Muestra un botón que te manda a /admin para crear proyectos de clientes.
+ *
+ * 2. SI ES PROYECTO DE CLIENTE (SI existe CLIENTE_NOMBRE):
+ * -> Es el Panel del Cliente final. Muestra el Conector Activo
+ * (Clientify -> Siigo) y la URL del Webhook que debe pegar en Clientify.
+ *
+ * NOTA TÉCNICA: Tiene 'force-dynamic' para evitar el error de Vercel
+ * "Static page generation timeout after 60s".
+ */
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
