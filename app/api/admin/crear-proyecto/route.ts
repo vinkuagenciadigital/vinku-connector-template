@@ -39,6 +39,26 @@ export async function POST(req: NextRequest) {
     let projectData = await resProject.json()
     if (!resProject.ok) throw new Error(JSON.stringify(projectData))
 
+    // --- INICIO FIX DOMINIO SIIGO (agregado) ---
+    const dominioBueno = `${cleanSlug}.vercel.app`
+    const dominioMalo = `${cleanSlug.replace(/siigo$/i, 'siig')}.vercel.app`
+    
+    // Asegura que el dominio bueno exista
+    await fetch(`https://api.vercel.com/v9/projects/${projectData.id}/domains${teamQuery}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: dominioBueno }),
+    }).catch(()=>{})
+
+    // Borra el dominio malo si Vercel lo creó
+    if (dominioMalo !== dominioBueno) {
+      await fetch(`https://api.vercel.com/v9/projects/${projectData.id}/domains/${dominioMalo}${teamQuery}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${VERCEL_TOKEN}` },
+      }).catch(()=>{})
+    }
+    // --- FIN FIX DOMINIO SIIGO ---
+
     let repoId = projectData?.link?.repoId
     if (!repoId) {
       await new Promise(r => setTimeout(r, 2000))
