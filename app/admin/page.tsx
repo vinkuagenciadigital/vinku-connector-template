@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import CopyButton from '../components/CopyButton'
 
 export default function AdminPanel() {
   const [clientifyKey, setClientifyKey] = useState('')
@@ -7,13 +8,13 @@ export default function AdminPanel() {
   const [logs, setLogs] = useState<any[]>([])
   const [webhookUrl, setWebhookUrl] = useState('')
 
-  // NUEVO: Fábrica
+  // Fábrica
   const [form, setForm] = useState({ nombreCliente: '', slug: '', clientifyApiKey: '', siigoUser: '', siigoAccessKey: '' })
   const [creando, setCreando] = useState(false)
   const [resultado, setResultado] = useState<any>(null)
 
   useEffect(()=>{
-  fetchLogs()
+    fetchLogs()
   },[])
 
   const fetchLogs = async () => {
@@ -45,7 +46,7 @@ export default function AdminPanel() {
     fetchLogs()
   }
 
-    const crearProyecto = async () => {
+  const crearProyecto = async () => {
     if(!form.slug ||!form.nombreCliente) return alert('Falta nombre y slug')
     setCreando(true)
     setResultado(null)
@@ -58,7 +59,7 @@ export default function AdminPanel() {
       const data = await res.json()
       setResultado(data)
       if(data.webhookUrl){
-        setWebhookUrl(data.webhookUrl) // <-- ESTA LÍNEA ES LA MAGIA
+        setWebhookUrl(data.webhookUrl)
       }
     } catch (e:any) {
       setResultado({ error: e.message })
@@ -66,59 +67,89 @@ export default function AdminPanel() {
     setCreando(false)
   }
 
-  return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6 bg-zinc-50 min-h-screen">
-      <h1 className="text-3xl font-bold">Vinku Connector - Panel</h1>
+  const inputClass = "w-full border border-[#8A6FE8]/20 rounded-lg p-3 text-sm bg-white text-black placeholder:text-black/40 focus:outline-none focus:ring-2 focus:ring-[#8A6FE8]/30"
+  const cardClass = "bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm"
 
-      {/* === NUEVO BLOQUE FABRICA === */}
-      <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-[1px] rounded-xl">
-        <div className="bg-white p-5 rounded-xl">
-          <h2 className="font-bold mb-1 text-violet-700">🏭 0. Fábrica - Crear Nuevo Cliente</h2>
-          <p className="text-xs text-zinc-500 mb-3">Esto crea un nuevo proyecto Vercel: cliente.vercel.app con sus propias keys</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input placeholder="Nombre Cliente (Ej: Acme SAS)" className="border p-2 rounded w-full" value={form.nombreCliente} onChange={e=>setForm({...form, nombreCliente: e.target.value})} />
-            <input placeholder="Slug (ej: acme-sas)" className="border p-2 rounded w-full" value={form.slug} onChange={e=>setForm({...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')})} />
-            <input placeholder="Clientify API Key del Cliente" className="border p-2 rounded col-span-2" value={form.clientifyApiKey} onChange={e=>setForm({...form, clientifyApiKey: e.target.value})} />
-            <input placeholder="Siigo User del Cliente" className="border p-2 rounded" value={form.siigoUser} onChange={e=>setForm({...form, siigoUser: e.target.value})} />
-            <input placeholder="Siigo Access Key del Cliente" className="border p-2 rounded" value={form.siigoAccessKey} onChange={e=>setForm({...form, siigoAccessKey: e.target.value})} />
+  return (
+    <div className="min-h-screen bg-[#EDEBFE] text-black p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-black">Vinku Connector - <span className="text-[#8A6FE8]">Panel</span></h1>
+          <p className="text-sm text-black/60">Fábrica de conectores Clientify → Siigo</p>
+        </div>
+
+        {/* 0. FÁBRICA */}
+        <div className={cardClass + " ring-1 ring-[#8A6FE8]/20"}>
+          <h2 className="font-semibold mb-1 text-[#8A6FE8]">🏭 0. Fábrica - Crear Nuevo Cliente</h2>
+          <p className="text-xs text-black/60 mb-4">Esto crea un nuevo proyecto Vercel: cliente.vercel.app con sus propias keys</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input placeholder="Nombre Cliente (Ej: Acme SAS)" className={inputClass} value={form.nombreCliente} onChange={e=>setForm({...form, nombreCliente: e.target.value})} />
+            <input placeholder="Slug (ej: acme-sas)" className={inputClass} value={form.slug} onChange={e=>setForm({...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')})} />
+            <input placeholder="Clientify API Key del Cliente" className={inputClass + " md:col-span-2"} value={form.clientifyApiKey} onChange={e=>setForm({...form, clientifyApiKey: e.target.value})} />
+            <input placeholder="Siigo User del Cliente" className={inputClass} value={form.siigoUser} onChange={e=>setForm({...form, siigoUser: e.target.value})} />
+            <input placeholder="Siigo Access Key del Cliente" className={inputClass} value={form.siigoAccessKey} onChange={e=>setForm({...form, siigoAccessKey: e.target.value})} />
           </div>
-          <button onClick={crearProyecto} disabled={creando} className="mt-3 bg-violet-600 hover:bg-violet-700 text-white px-4 py-3 rounded-lg w-full font-bold">
+
+          <button onClick={crearProyecto} disabled={creando} className="mt-4 w-full bg-[#8A6FE8] hover:bg-[#7a5fe0] text-white px-4 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50">
             {creando? 'Creando proyecto en Vercel...' : '🚀 CREAR PROYECTO CLIENTE'}
           </button>
+
           {resultado && (
-            <div className="mt-3 p-3 bg-black text-green-400 rounded text-xs">
-              <pre className="whitespace-pre-wrap">{JSON.stringify(resultado, null, 2)}</pre>
-              {resultado.url && <div className="mt-2 text-white">✅ <a href={resultado.url} target="_blank" className="underline text-violet-300">{resultado.url}</a> listo<br/>Webhook: {resultado.webhookUrl}</div>}
+            <div className="mt-4">
+              {resultado.url ? (
+                <div className="bg-[#EDEBFE] border border-[#8A6FE8]/30 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-black">✅ Proyecto creado</p>
+                  <div className="flex gap-2 items-center">
+                    <code className="flex-1 bg-white p-2.5 rounded-lg text-sm break-all border border-[#8A6FE8]/20 text-black">{resultado.url}</code>
+                    <CopyButton text={resultado.url} />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <code className="flex-1 bg-white p-2.5 rounded-lg text-sm break-all border border-green-200 text-black font-bold">{resultado.webhookUrl}</code>
+                    <CopyButton text={resultado.webhookUrl} />
+                  </div>
+                  <a href={resultado.url} target="_blank" className="text-xs text-[#8A6FE8] underline">Abrir panel del cliente →</a>
+                </div>
+              ) : (
+                <pre className="mt-3 p-3 bg-black text-green-400 rounded-xl text-xs whitespace-pre-wrap">{JSON.stringify(resultado, null, 2)}</pre>
+              )}
             </div>
           )}
         </div>
-      </div>
 
-      <div className="bg-white p-5 rounded-xl border shadow">
-        <h2 className="font-bold mb-3">1. Conexión Clientify (de esta fábrica)</h2>
-        <input value={clientifyKey} onChange={e=>setClientifyKey(e.target.value)} placeholder="API Key Clientify" className="w-full border p-3 rounded-lg" />
-        <button onClick={testClientify} className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-lg w-full">Probar Clientify</button>
-      </div>
-            {webhookUrl && (
-        <div className="bg-white p-5 rounded-xl border shadow border-green-500">
-          <h2 className="font-bold mb-3">2. Webhook generado para {form.nombreCliente || 'este cliente'}</h2>
-          <div className="bg-slate-900 text-green-400 p-3 rounded text-xs break-all">{webhookUrl}</div>
-          <p className="text-xs text-zinc-500 mt-2">Pega esta URL en Clientify de {form.nombreCliente}</p>
-          <button onClick={simulateWin} className="mt-3 w-full bg-slate-800 text-white py-3 rounded-lg">🚀 Simular Ganada</button>
+        {webhookUrl && (
+          <div className={cardClass + " border-green-200 bg-green-50/50"}>
+            <h2 className="font-semibold mb-3 text-black">2. Webhook generado para <span className="text-[#8A6FE8]">{form.nombreCliente || 'este cliente'}</span></h2>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-slate-900 text-green-400 p-3 rounded-lg text-xs break-all font-mono">{webhookUrl}</div>
+              <CopyButton text={webhookUrl} />
+            </div>
+            <p className="text-xs text-black/60 mt-2">Pega esta URL en Clientify de {form.nombreCliente}</p>
+            <button onClick={simulateWin} className="mt-3 w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-zinc-800 transition-colors">🚀 Simular Ganada</button>
+          </div>
+        )}
+
+        <div className={cardClass}>
+          <h2 className="font-semibold mb-3 text-black">1. Conexión Clientify (de esta fábrica)</h2>
+          <input value={clientifyKey} onChange={e=>setClientifyKey(e.target.value)} placeholder="API Key Clientify" className={inputClass} />
+          <button onClick={testClientify} className="mt-3 bg-black text-white px-4 py-2.5 rounded-lg w-full font-medium hover:bg-zinc-800 transition-colors">Probar Clientify</button>
         </div>
-      )}
-      <div className="bg-white p-5 rounded-xl border shadow">
-        <h2 className="font-bold mb-3">3. Siigo (Fase 1 Simulación)</h2>
-        <div className="grid grid-cols-3 gap-2">
-          <input placeholder="Usuario Siigo" className="border p-2 rounded" />
-          <input placeholder="Access Key" className="border p-2 rounded" />
-          <input placeholder="Partner ID" defaultValue="Vinku" className="border p-2 rounded" />
+
+        <div className={cardClass}>
+          <h2 className="font-semibold mb-3 text-black">3. Siigo (Fase 1 Simulación)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input placeholder="Usuario Siigo" className={inputClass} />
+            <input placeholder="Access Key" className={inputClass} />
+            <input placeholder="Partner ID" defaultValue="Vinku" className={inputClass} />
+          </div>
         </div>
-      </div>
-      {status && <pre className="bg-black text-white p-4 rounded text-xs overflow-auto">{status}</pre>}
-      <div className="bg-white p-5 rounded-xl border shadow">
-        <h2 className="font-bold">Logs de esta fábrica</h2>
-        <pre className="text-xs overflow-auto max-h-96">{JSON.stringify(logs, null, 2)}</pre>
+
+        {status && <pre className="bg-black text-white p-4 rounded-2xl text-xs overflow-auto border border-zinc-800">{status}</pre>}
+        
+        <div className={cardClass}>
+          <h2 className="font-semibold mb-3 text-black">Logs de esta fábrica</h2>
+          <pre className="text-xs overflow-auto max-h-96 bg-[#EDEBFE] p-3 rounded-lg border border-[#8A6FE8]/20">{JSON.stringify(logs, null, 2)}</pre>
+        </div>
       </div>
     </div>
   )
