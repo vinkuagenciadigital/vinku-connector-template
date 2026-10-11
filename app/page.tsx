@@ -20,23 +20,6 @@ export const revalidate = 0
 import Link from 'next/link'
 import CopyButton from './components/CopyButton'
 
-function CopyButton({ text }: { text: string }) {
-  // Componente cliente inline sin necesidad de otro archivo
-  return (
-    <button
-      onClick={() => {
-        if (typeof window!== 'undefined') {
-          navigator.clipboard.writeText(text)
-          alert('Copiado: ' + text)
-        }
-      }}
-      className="bg-white text-black px-4 rounded-lg font-medium h-[44px]"
-    >
-      Copiar
-    </button>
-  )
-}
-
 export default function Home() {
   const nombreCliente = process.env.CLIENTE_NOMBRE
   const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL || 'tu-proyecto.vercel.app'
