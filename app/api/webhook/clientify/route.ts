@@ -216,6 +216,20 @@ export async function POST(req: NextRequest) {
         let companyData = companyInput? await getFullCompany(apiKey, companyInput) : null
         let contactData = contactInput? await getFullContact(apiKey, contactInput) : null
 
+        // =================================================================
+        // FALLBACK V4.1 - Si la empresa está ligada al CONTACTO y no a la OPORTUNIDAD
+        // Por qué existe: Pasa muy común que la empresa está ligada al contacto
+        // y no a la oportunidad. Si el deal no trae empresa pero el contacto sí,
+        // la buscamos desde contact.company / company_details.
+        // =================================================================
+        if (!companyData && contactData) {
+          const companyFromContact = (contactData as any).company || (contactData as any).company_details
+          if (companyFromContact) {
+            console.log(`🔄 Deal sin empresa directa, pero contacto tiene empresa ligada: ${JSON.stringify(companyFromContact).substring(0,200)}, buscándola...`);
+            companyData = await getFullCompany(apiKey, companyFromContact)
+          }
+        }
+
         // Lee decisión del cliente desde la oportunidad (campo personalizado)
         const facturarA = (
           getCustomValue(fullDeal.custom_fields, "siigo_facturar_a") ||
@@ -247,7 +261,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-           ...companyData,
+          ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -312,11 +326,11 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         ;(entry as any).faltantes_para_facturar = [
-      !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
-      !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
-      !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
-      !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
-      !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+     !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+     !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+     !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+     !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+     !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
