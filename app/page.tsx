@@ -21,11 +21,14 @@ import Link from 'next/link'
 import CopyButton from './components/CopyButton'
 
 export default function Home() {
-  const nombreCliente = process.env.CLIENTE_NOMBRE
-  const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL || 'tu-proyecto.vercel.app'
+const nombreCliente = process.env.CLIENTE_NOMBRE
+let rawUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'tu-proyecto.vercel.app'
+rawUrl = rawUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+const vercelUrl = rawUrl.replace(/-[a-z0-9]{8,}-vinku\.vercel\.app/i, '.vercel.app').replace(/-[a-z0-9]{8,}-vinku/i, '').replace('.vercel.app', '') + '.vercel.app'
 
-  const isClientProject =!!nombreCliente
-  const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
+const isClientProject = !!nombreCliente
+
+const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
 
   // SI ES FÁBRICA -> muestra link a /admin en vez de hacer redirect (el redirect colgaba el build)
   if (!isClientProject) {
