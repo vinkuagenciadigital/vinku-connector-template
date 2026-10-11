@@ -69,14 +69,17 @@ export async function POST(req: NextRequest) {
   console.log('--- CLIENTIFY REAL PAYLOAD ---');
   console.log(JSON.stringify(body, null, 2));
 
-  // ===== DEDUP FIX - evita doble evento de Clientify =====
+  // ===== DEDUP FIX V2 - evita doble evento de Clientify =====
   const incomingId = String(body.id || body.data?.id || '')
   const now = Date.now()
-  const last = memoryLogs[0] as any
-  if (last && incomingId && String(last.oportunidad_id) === incomingId) {
-    const lastTime = new Date(last.fecha).getTime()
-    if (!isNaN(lastTime) && (now - lastTime) < 10000) {
-      console.log(`♻️ Duplicado ignorado para deal ${incomingId} (menos de 10s)`)
+  if (incomingId) {
+    const dupe = memoryLogs.find((l: any) => {
+      if (String(l.oportunidad_id)!== incomingId) return false
+      const t = new Date(l.fecha).getTime()
+      return!isNaN(t) && (now - t) < 120000
+    })
+    if (dupe) {
+      console.log(`♻️ Duplicado ignorado para deal ${incomingId} (menos de 2 min)`)
       return NextResponse.json({ ok: true, duplicate: true, id: incomingId })
     }
   }
@@ -138,9 +141,9 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         (entry as any).faltantes_para_facturar = [
-     !dataParaSiigo.nit? "siigo_nit" : null,
-     !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
-     !dataParaSiigo.cantidad? "siigo_cantidad" : null,
+    !dataParaSiigo.nit? "siigo_nit" : null,
+    !dataParaSiigo.sku? "siigo_producto_sku / producto en deal" : null,
+    !dataParaSiigo.cantidad? "siigo_cantidad" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
@@ -159,10 +162,20 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const seen = new Set<string>()
+  const deduped: any[] = []
+  for (const log of memoryLogs) {
+    const id = String(log.oportunidad_id)
+    if (!seen.has(id)) {
+      seen.add(id)
+      deduped.push(log)
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     status: 'webhook_activo',
     cliente: process.env.CLIENTE_NOMBRE || 'test',
-    eventos: memoryLogs.slice(0,20)
+    eventos: deduped.slice(0,20)
   })
 }
