@@ -61,7 +61,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
         {/* === NUEVO: CAMPOS PERSONALIZADOS REQUERIDOS EN CLIENTIFY === */}
         <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
           <h2 className="font-semibold mb-1 text-black">2. Campos personalizados que debes crear en Clientify</h2>
-          <p className="text-sm text-black/60 mb-5">Crea estos campos con el nombre exacto (minúsculas). Clientify &gt; Ajustes &gt; Campos personalizados. Con botón de copiar.</p>
+          <p className="text-sm text-black/60 mb-5">Crea estos campos con el nombre exacto (minúsculas). Clientify &gt; Contactos &gt; Campos personalizados. Con botón de copiar.</p>
 
           <div className="space-y-5">
             <div>
