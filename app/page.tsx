@@ -76,14 +76,6 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
           </div>
         </div>
 
-          <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
-            <h2 className="font-semibold mb-4 text-black">Facturas Generadas en Siigo</h2>
-            <div className="text-sm text-black/60">
-              Aquí muestras la respuesta de Siigo (id factura, estado).
-            </div>
-          </div>
-        </div>
-
         <div className="text-xs text-black/40 pt-6">
           Project: {vercelUrl} • Cliente: {nombreCliente}
         </div>
