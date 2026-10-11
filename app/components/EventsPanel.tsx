@@ -30,13 +30,15 @@ export default function EventsPanel() {
         // FIX NOMBRE PRODUCTO - obtener nombre real
         const nombreProducto = s?.producto_nombre || s?.productos_completos?.[0]?.name || s?.productos_completos?.[0]?.product_name || null
         const estadoLimpio = (ev.estado || '').replace(' - Simulación F1','').replace('Simulación F1','').trim()
+        // FIX MULTI-PRODUCTO - total real
+        const totalReal = s?.precio_total_oportunidad || ev.valor
 
         return (
           <div key={idx} className="border border-[#8A6FE8]/20 rounded-xl p-3 text-sm bg-white">
             {/* Header */}
             <div className="flex justify-between items-start gap-2">
               <div>
-                <div className="font-semibold text-black text-[13px]">{s?.razon_social || ev.contact} - ${ev.valor}</div>
+                <div className="font-semibold text-black text-[13px]">{s?.razon_social || ev.contact} - ${Number(totalReal || 0).toLocaleString()}</div>
                 <div className="text-xs text-black/50">{ev.fecha?.slice(0,19)} • ID: {ev.oportunidad_id}</div>
               </div>
               <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap border ${listo? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
@@ -77,16 +79,41 @@ export default function EventsPanel() {
                   <p>📞 {s.telefono || 'sin teléfono'}</p>
                 </div>
 
-                {/* FIX NOMBRE PRODUCTO - ahora muestra nombre + sku pequeño */}
-                <div className="pt-2 border-t border-[#8A6FE8]/10">
-                  {nombreProducto && (
-                    <p className="text-[13px] font-bold text-black leading-tight mb-1">{nombreProducto}</p>
+                {/* FIX MULTI-PRODUCTO - ahora muestra TODOS los productos + total oportunidad */}
+                <div className="pt-2 border-t border-[#8A6FE8]/10 space-y-2">
+                  {(s.productos_completos && s.productos_completos.length > 0)? (
+                    s.productos_completos.map((prod: any, pIdx: number) => (
+                      <div key={pIdx} className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-[13px] font-bold text-black leading-tight">{prod.name || prod.product_name || nombreProducto || 'Producto'}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="bg-white border border-[#8A6FE8]/20 px-2 py-1 rounded font-mono font-bold text-[11px]">{prod.sku || s.sku}</span>
+                            <span className="text-black/60 text-[11px]">x{prod.quantity || 1}</span>
+                          </div>
+                        </div>
+                        <span className="font-bold text-black text-[12px]">${Number(prod.price || 0).toLocaleString()}</span>
+                      </div>
+                    ))
+                  ) : (
+                    // Fallback si viene solo 1 producto en formato viejo
+                    <>
+                      {nombreProducto && (
+                        <p className="text-[13px] font-bold text-black leading-tight mb-1">{nombreProducto}</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="bg-white border border-[#8A6FE8]/20 px-2 py-1 rounded font-mono font-bold text-[11px]">{s.sku}</span>
+                        <span className="text-black/60 text-[11px]">x{s.cantidad}</span>
+                        <span className="ml-auto font-bold text-black">${Number(s.precio || 0).toLocaleString()}</span>
+                      </div>
+                    </>
                   )}
-                  <div className="flex items-center gap-2">
-                    <span className="bg-white border border-[#8A6FE8]/20 px-2 py-1 rounded font-mono font-bold text-[11px]">{s.sku}</span>
-                    <span className="text-black/60 text-[11px]">x{s.cantidad}</span>
-                    <span className="ml-auto font-bold text-black">${Number(s.precio || 0).toLocaleString()}</span>
-                    <span className="text-[10px] text-black/40">Pago: {s.forma_pago_dian}</span>
+                  {/* Total */}
+                  <div className="flex items-center justify-between pt-2 border-t border-dashed border-[#8A6FE8]/20">
+                    <span className="text-[10px] uppercase tracking-wide text-black/50 font-bold">Total oportunidad</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-black text-[13px]">${Number(totalReal || 0).toLocaleString()}</span>
+                      <span className="text-[10px] text-black/40">Pago: {s.forma_pago_dian}</span>
+                    </div>
                   </div>
                 </div>
               </div>
