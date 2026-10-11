@@ -64,10 +64,14 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold mb-4 text-black">Oportunidades Ganadas (Eventos)</h2>
-            <div className="text-sm text-black/60">
-              Aquí irán los logs que lleguen por el webhook.
-              Conecta <code className="bg-[#EDEBFE] px-1 py-0.5 rounded text-black">/api/webhook/clientify</code> GET para verlos.
-            </div>
+            import EventsPanel from './components/EventsPanel'
+            // arriba con los otros imports
+
+           //... dentro del grid:
+           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
+           <h2 className="font-semibold mb-4 text-black">Oportunidades Ganadas (Eventos)</h2>
+           <EventsPanel />
+           </div>
           </div>
 
           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
