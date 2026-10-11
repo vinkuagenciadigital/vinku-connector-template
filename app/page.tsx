@@ -92,23 +92,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
               </div>
             </div>
 
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-black/40 mb-2">⚙️ Compatibilidad V1 (solo si no tienes V2)</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3 border border-dashed border-black/15 rounded-xl p-3 bg-white/60">
-                  <div className="flex-1"><p className="text-sm font-mono font-bold text-black/70">siigo_nit</p><p className="text-xs text-black/60">NIT / Cédula • Texto • Ej: 900123456</p><p className="text-[11px] text-amber-600">⚠️ Si tu Clientify ya tiene API V2, NO lo crees. Usa el campo nativo ID Fiscal.</p></div>
-                  <CopyButton text="siigo_nit" />
-                </div>
-                <div className="flex items-center justify-between gap-3 border border-dashed border-black/15 rounded-xl p-3 bg-white/60">
-                  <div className="flex-1"><p className="text-sm font-mono font-bold text-black/70">siigo_ciudad_dian</p><p className="text-xs text-black/60">Ciudad DIAN • Texto • Ej: 76001=Cali, 11001=Bogotá</p><p className="text-[11px] text-black/40">Solo si no usas Dirección principal</p></div>
-                  <CopyButton text="siigo_ciudad_dian" />
-                </div>
-              </div>
-              <p className="text-[11px] text-black/50 mt-3 bg-[#EDEBFE] p-2 rounded-lg">💡 <b>Nativos que ya NO necesitas crear:</b> NIT = campo nativo "ID Fiscal", Dirección = "Dirección principal", SKU = campo nativo SKU de Productos.</p>
-            </div>
-          </div>
-        </div>
-
+           
         {/* PANEL DE EVENTOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
