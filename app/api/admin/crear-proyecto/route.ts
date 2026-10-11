@@ -40,19 +40,27 @@ export async function POST(req: NextRequest) {
     if (!repoId) throw new Error(`No se pudo obtener repoId`)
 
     // DATOS SOLCIITADOS PARA CONECTAR CLIENTIFY Y SIIGO
-    const envs = [
-      { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey },
-      { key: 'CLIENTE_NOMBRE', value: nombreCliente },
-      // { key: 'SIIGO_USER', value: siigoUser },
-      // { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey },
-    ]
-    for (const env of envs) {
-      if(!env.value) continue
-      await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env${teamQuery}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: env.key, value: env.value, type: 'encrypted', target: ['production','preview','development'] }),
-      })
+   const envs = [
+        { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey?.toString().trim() },
+        { key: 'CLIENTE_NOMBRE', value: nombreCliente?.toString().trim() },
+     // { key: 'SIIGO_USER', value: siigoUser?.toString().trim() },
+     // { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey?.toString().trim() },
+   ]
+
+       for (const env of envs) {
+          if(!env.value) continue
+    const isSecret = env.key.includes('API_KEY') || env.key.includes('ACCESS') || env.key.includes('USER')
+    await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env${teamQuery}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      key: env.key, 
+      value: env.value, 
+      type: isSecret ? 'sensitive' : 'plain',
+      target: ['production','preview','development'] 
+      }),
+    })
+    await new Promise(r => setTimeout(r, 800))
     }
 
     await new Promise(r => setTimeout(r, 2500))
