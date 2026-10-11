@@ -1,16 +1,43 @@
-import { redirect } from 'next/navigation'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+import Link from 'next/link'
+
+function CopyButton({ text }: { text: string }) {
+  // Componente cliente inline sin necesidad de otro archivo
+  return (
+    <button
+      onClick={() => {
+        if (typeof window!== 'undefined') {
+          navigator.clipboard.writeText(text)
+          alert('Copiado: ' + text)
+        }
+      }}
+      className="bg-white text-black px-4 rounded-lg font-medium h-[44px]"
+    >
+      Copiar
+    </button>
+  )
+}
 
 export default function Home() {
   const nombreCliente = process.env.CLIENTE_NOMBRE
-  const isClientProject = !!nombreCliente
+  const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL || 'tu-proyecto.vercel.app'
 
-  // SI ES FÁBRICA (no tiene CLIENTE_NOMBRE) -> mándalo a /admin como ahora
+  const isClientProject =!!nombreCliente
+  const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
+
+  // SI ES FÁBRICA -> muestra link a /admin en vez de hacer redirect (el redirect colgaba el build)
   if (!isClientProject) {
-    redirect('/admin')
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white p-6 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Fábrica Vinku</h1>
+          <Link href="/admin" className="bg-white text-black px-6 py-3 rounded-lg">Ir al Admin</Link>
+        </div>
+      </div>
+    )
   }
-
-  // SI ES CLIENTE -> muestra su panel
-  const webhookUrl = `https://${process.env.VERCEL_URL}/api/webhook/clientify`
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-6">
@@ -26,7 +53,7 @@ export default function Home() {
           <p className="text-sm text-zinc-400 mb-3">Pega esta URL en Clientify &gt; Automatizaciones &gt; Cuando oportunidad ganada &gt; Webhook</p>
           <div className="flex gap-2">
             <code className="flex-1 bg-black p-3 rounded-lg text-green-400 text-sm break-all border border-zinc-800">{webhookUrl}</code>
-            <button onClick={() => navigator.clipboard.writeText(webhookUrl)} className="bg-white text-black px-4 rounded-lg font-medium">Copiar</button>
+            <CopyButton text={webhookUrl} />
           </div>
         </div>
 
@@ -34,11 +61,10 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
             <h2 className="font-semibold mb-4">Oportunidades Ganadas (Eventos)</h2>
-            <div id="eventos" className="text-sm text-zinc-500">
-              Aquí irán los logs que lleguen por el webhook. 
-              Necesitas crear un <code>/api/logs</code> que lea de tu DB/KV.
+            <div className="text-sm text-zinc-500">
+              Aquí irán los logs que lleguen por el webhook.
+              Conecta <code>/api/webhook/clientify</code> GET para verlos.
             </div>
-            {/* Para hacerlo real, crea un componente cliente que haga fetch a /api/events */}
           </div>
 
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
@@ -50,7 +76,7 @@ export default function Home() {
         </div>
 
         <div className="text-xs text-zinc-600 pt-6">
-          Project: {process.env.VERCEL_URL} • Cliente: {nombreCliente}
+          Project: {vercelUrl} • Cliente: {nombreCliente}
         </div>
       </div>
     </div>
