@@ -201,22 +201,59 @@ export async function POST(req: NextRequest) {
       console.log('DEAL RAW keys:', fullDeal? Object.keys(fullDeal) : 'null');
 
       if (fullDeal) {
-        // NUEVA LÓGICA V3 - Detectar si facturamos a Empresa o a Contacto + logs
-        let clienteData: any = null
-        let esEmpresa = false
-
-        // FIX V5: fullDeal.contact viene como URL, no como ID directo
+        // =================================================================
+        // NUEVA LÓGICA V4 - DECISIÓN CLIENTE: PERSONA o EMPRESA (siigo_facturar_a)
+        // Por qué existe: Normalmente una empresa está ligada a un contacto.
+        // El cliente final debe decidir si quiere factura como persona natural
+        // o jurídica. Creamos un campo en Oportunidades siigo_facturar_a
+        // con opciones PERSONA / EMPRESA que predomina sobre la lógica automática.
+        // Si es EMPRESA factura a company, si es PERSONA factura a contact.
+        // Si no está definido, mantiene lógica anterior (prioriza empresa si existe).
+        // =================================================================
         const contactInput = fullDeal.contact
         const companyInput = fullDeal.company
 
-        if (companyInput) {
-          console.log('Buscando empresa:', companyInput);
-          clienteData = await getFullCompany(apiKey, companyInput)
-          esEmpresa = true
-        } else if (contactInput) {
-          console.log('Buscando contacto:', contactInput);
-          clienteData = await getFullContact(apiKey, contactInput)
+        let companyData = companyInput? await getFullCompany(apiKey, companyInput) : null
+        let contactData = contactInput? await getFullContact(apiKey, contactInput) : null
+
+        // Lee decisión del cliente desde la oportunidad (campo personalizado)
+        const facturarA = (
+          getCustomValue(fullDeal.custom_fields, "siigo_facturar_a") ||
+          getCustomValue(fullDeal.custom_fields, "facturar_a") ||
+          getCustomValue(fullDeal.custom_fields, "tipo_facturacion") ||
+          ""
+        ).toLowerCase()
+
+        console.log(`🧾 Decisión facturación: siigo_facturar_a=${facturarA || 'no definido'} | tieneEmpresa=${!!companyData} tieneContacto=${!!contactData}`);
+
+        let clienteData: any = null
+        let esEmpresa = false
+
+        if (facturarA.includes("empresa") || facturarA.includes("juridica") || facturarA.includes("jurídica")) {
+          // Cliente pidió factura como EMPRESA / JURÍDICA
+          clienteData = companyData || contactData
+          esEmpresa =!!companyData
+          if (!companyData) console.log("⚠️ Pidió factura EMPRESA pero el deal no tiene empresa ligada, usando contacto");
+        } else if (facturarA.includes("persona") || facturarA.includes("natural") || facturarA.includes("contacto")) {
+          // Cliente pidió factura como PERSONA NATURAL / CONTACTO
+          clienteData = contactData || companyData
+          esEmpresa = false
+        } else {
+          // Sin decisión explícita -> lógica por defecto: prioriza empresa si existe, si no contacto
+          clienteData = companyData || contactData
+          esEmpresa =!!companyData
         }
+
+        // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
+        if (clienteData && companyData && contactData && esEmpresa) {
+          clienteData = {
+           ...companyData,
+            emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
+            phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
+            _contact_fallback_used: true
+          }
+        }
+
         console.log('CLIENTE DATA RAW:', JSON.stringify(clienteData)?.substring(0, 4000));
 
         // NUEVA LÓGICA V3 - Usar Dirección principal (campo tipo maps) + soporte addresses[]
@@ -261,6 +298,7 @@ export async function POST(req: NextRequest) {
           cantidad: fullDeal.products?.[0]?.quantity || getCustomValue(fullDeal.custom_fields, "siigo_cantidad") || 1,
           precio: fullDeal.products?.[0]?.price || fullDeal.amount || entry.valor,
           forma_pago_dian: getCustomValue(fullDeal.custom_fields, "siigo_forma_pago_dian") || "1",
+          decision_facturacion: facturarA || "auto",
           // Debug
           productos_completos: fullDeal.products || [],
           custom_fields_encontrados: fullDeal.custom_fields || [],
@@ -274,11 +312,11 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         ;(entry as any).faltantes_para_facturar = [
-       !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
-       !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
-       !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
-       !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
-       !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+      !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+      !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+      !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+      !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+      !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
