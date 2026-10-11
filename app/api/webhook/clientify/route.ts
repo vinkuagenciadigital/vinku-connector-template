@@ -57,23 +57,52 @@ async function getFullDeal(apiKey: string, dealId: string) {
   return res.json();
 }
 
+// FIX V5 - Extractor de ID desde URL tipo https://api.clientify.net/v1/contacts/168686864/
+function extractId(input: any): string | null {
+  if (!input) return null
+  if (typeof input === 'number') return String(input)
+  if (typeof input === 'string') {
+    const match = input.match(/\/(\d+)\/?$/)
+    if (match) return match[1]
+    if (/^\d+$/.test(input.trim())) return input.trim()
+    return null
+  }
+  if (typeof input === 'object') {
+    if (input.id) return String(input.id)
+    if (input.url) return extractId(input.url)
+  }
+  return null
+}
+
 // NUEVO - Para traer datos de Empresa y Contacto
-async function getFullContact(apiKey: string, contactId: string) {
+async function getFullContact(apiKey: string, contactInput: any) {
+  const contactId = extractId(contactInput)
+  if (!contactId) {
+    console.log('❌ No se pudo extraer ID de contacto de:', JSON.stringify(contactInput)?.substring(0,300));
+    return null
+  }
+  console.log(`Buscando contacto ID real: ${contactId}`);
   const res = await fetch(`${CLIENTIFY_API}contacts/${contactId}/`, {
     headers: { "Authorization": `Token ${apiKey}` }
   });
   if (!res.ok) {
-    console.log('❌ getFullContact falló:', res.status);
+    console.log('❌ getFullContact falló:', res.status, await res.text().then(t=>t.substring(0,500)));
     return null;
   }
   return res.json();
 }
-async function getFullCompany(apiKey: string, companyId: string) {
+async function getFullCompany(apiKey: string, companyInput: any) {
+  const companyId = extractId(companyInput)
+  if (!companyId) {
+    console.log('❌ No se pudo extraer ID de empresa de:', JSON.stringify(companyInput)?.substring(0,300));
+    return null
+  }
+  console.log(`Buscando empresa ID real: ${companyId}`);
   const res = await fetch(`${CLIENTIFY_API}companies/${companyId}/`, {
     headers: { "Authorization": `Token ${apiKey}` }
   });
   if (!res.ok) {
-    console.log('❌ getFullCompany falló:', res.status);
+    console.log('❌ getFullCompany falló:', res.status, await res.text().then(t=>t.substring(0,500)));
     return null;
   }
   return res.json();
@@ -176,24 +205,26 @@ export async function POST(req: NextRequest) {
         let clienteData: any = null
         let esEmpresa = false
 
-        const contactId = fullDeal.contact?.id || fullDeal.contact
-        const companyId = fullDeal.company?.id || fullDeal.company
+        // FIX V5: fullDeal.contact viene como URL, no como ID directo
+        const contactInput = fullDeal.contact
+        const companyInput = fullDeal.company
 
-        if (companyId) {
-          console.log('Buscando empresa:', companyId);
-          clienteData = await getFullCompany(apiKey, companyId)
+        if (companyInput) {
+          console.log('Buscando empresa:', companyInput);
+          clienteData = await getFullCompany(apiKey, companyInput)
           esEmpresa = true
-        } else if (contactId) {
-          console.log('Buscando contacto:', contactId);
-          clienteData = await getFullContact(apiKey, contactId)
+        } else if (contactInput) {
+          console.log('Buscando contacto:', contactInput);
+          clienteData = await getFullContact(apiKey, contactInput)
         }
-        console.log('CLIENTE DATA RAW:', JSON.stringify(clienteData)?.substring(0, 2500));
+        console.log('CLIENTE DATA RAW:', JSON.stringify(clienteData)?.substring(0, 4000));
 
         // NUEVA LÓGICA V3 - Usar Dirección principal (campo tipo maps) + soporte addresses[]
-        const mainAddr = clienteData?.main_address || clienteData?.addresses?.[0] || clienteData?.address || {}
-        const ciudadTxt = mainAddr.city || clienteData?.city || ''
-        const estadoTxt = mainAddr.state || clienteData?.state || ''
-        const direccionTxt = mainAddr.address || mainAddr.street || mainAddr.formatted_address || ''
+        const mainAddr = clienteData?.main_address || clienteData?.addresses?.[0] || {}
+        // Fallback extra para tu cuenta donde address viene en campo raíz
+        const ciudadTxt = mainAddr.city || clienteData?.city || (clienteData?.address?.toLowerCase?.().includes('cali')? 'Cali' : '') || ''
+        const estadoTxt = mainAddr.state || clienteData?.state || (ciudadTxt.toLowerCase().includes('cali')? 'Valle del Cauca' : '') || ''
+        const direccionTxt = mainAddr.address || mainAddr.street || mainAddr.formatted_address || clienteData?.address || clienteData?.street || ''
         const dianCodes = getDianCodes(ciudadTxt, estadoTxt)
 
         // PARCHE V3 - Buscar SKU real en /products/ porque products[0].sku viene vacío en deal
@@ -204,15 +235,17 @@ export async function POST(req: NextRequest) {
               headers: { "Authorization": `Token ${apiKey}` }
             });
             const pData = await pRes.json();
-            console.log('PRODUCT RAW:', JSON.stringify(pData).substring(0, 1500));
-            skuReal = pData.sku || pData.code || pData.reference || null
+            console.log('PRODUCT RAW:', JSON.stringify(pData).substring(0, 2500));
+            skuReal = pData.sku || pData.code || pData.reference || pData.name || null
           } catch(e: any){ console.log('Error producto', e.message) }
+        } else if (skuReal) {
+           console.log('PRODUCT RAW directo del deal:', JSON.stringify(fullDeal.products?.[0]).substring(0, 2500));
         }
 
         // Armamos el objeto que cualquier cliente Siigo necesita para facturar
         const dataParaSiigo = {
-          // NIT nativo: CONTACTOS.Número de Identificación Fiscal / EMPRESAS.ID fiscal
-          nit: clienteData?.tax_id || clienteData?.nif || clienteData?.id_fiscal || clienteData?.identification || getCustomValue(clienteData?.custom_fields, "siigo_nit") || getCustomValue(clienteData?.custom_fields, "nif") || null,
+          // NIT nativo: CONTACTOS.Número de Identificación Fiscal / EMPRESAS.ID fiscal - FIX V5 agrega más variantes
+          nit: clienteData?.tax_id || clienteData?.nif || clienteData?.id_fiscal || clienteData?.identification || clienteData?.identification_number || clienteData?.document || clienteData?.dni || clienteData?.vat_number || clienteData?.id_number || getCustomValue(clienteData?.custom_fields, "siigo_nit") || getCustomValue(clienteData?.custom_fields, "nif") || getCustomValue(clienteData?.custom_fields, "nit") || null,
           tipo_doc_dian: getCustomValue(clienteData?.custom_fields, "siigo_tipo_doc_dian") || (esEmpresa? "31" : "13"),
           responsable_iva: getCustomValue(clienteData?.custom_fields, "siigo_responsable_iva") || null,
           razon_social: clienteData?.company_name || clienteData?.name || clienteData?.razon_social || entry.contact,
@@ -241,11 +274,11 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         ;(entry as any).faltantes_para_facturar = [
-        !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
-        !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
-        !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
-        !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
-        !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+       !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+       !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+       !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+       !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+       !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
