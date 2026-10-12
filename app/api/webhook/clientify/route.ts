@@ -8,8 +8,16 @@ export const dynamic = 'force-dynamic'
 // Usamos global para que no se borre con cada deploy caliente de Vercel.
 // En producción final esto se cambia a Vercel Redis (antes se llamaba KV).
 // =================================================================
-let memoryLogs: any[] = (global as any).memoryLogs || []
+declare global {
+  var __eventosClientify__: any[] | undefined
+}
+
+if (!globalThis.__eventosClientify__) {
+  globalThis.__eventosClientify__ = (global as any).memoryLogs || []
+}
+let memoryLogs: any[] = globalThis.__eventosClientify__
 ;(global as any).memoryLogs = memoryLogs
+globalThis.__eventosClientify__ = memoryLogs
 
 // =================================================================
 // OBJETIVO 2: CONFIGURACIÓN BASE PARA HABLAR CON CLIENTIFY API
@@ -187,6 +195,7 @@ export async function POST(req: NextRequest) {
   // Lo ponemos de primero en la lista de logs
   memoryLogs.unshift(entry)
   if (memoryLogs.length > 20) memoryLogs.pop()
+  globalThis.__eventosClientify__ = memoryLogs
 
   // =================================================================
   // OBJETIVO 6: ENRIQUECIMIENTO DE DATOS PARA FACTURACIÓN SIIGO
@@ -279,7 +288,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-    ...companyData,
+   ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -340,7 +349,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-        ...p,
+       ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
@@ -419,9 +428,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const logs = globalThis.__eventosClientify__ || memoryLogs
   const seen = new Set<string>()
   const deduped: any[] = []
-  for (const log of memoryLogs) {
+  for (const log of logs) {
     const id = String(log.oportunidad_id)
     if (!seen.has(id)) {
       seen.add(id)
