@@ -244,14 +244,19 @@ export async function POST(req: NextRequest) {
         }
 
         // Lee decisión del cliente desde la oportunidad (campo personalizado)
-        const facturarA = (
+        // FIX V6 - Guardamos RAW para validar si fue diligenciado o no
+        const facturarA_raw =
           getCustomValue(fullDeal.custom_fields, "siigo_facturar_a") ||
           getCustomValue(fullDeal.custom_fields, "facturar_a") ||
           getCustomValue(fullDeal.custom_fields, "tipo_facturacion") ||
-          ""
-        ).toLowerCase()
+          null;
 
-        console.log(`🧾 Decisión facturación: siigo_facturar_a=${facturarA || 'no definido'} | tieneEmpresa=${!!companyData} tieneContacto=${!!contactData}`);
+        const facturarA = (facturarA_raw || "").toLowerCase();
+
+        const formaPagoDian_raw = getCustomValue(fullDeal.custom_fields, "siigo_forma_pago_dian") || null;
+        const formaPagoDian = formaPagoDian_raw || "1";
+
+        console.log(`🧾 Decisión facturación: siigo_facturar_a=${facturarA || 'no definido'} | tieneEmpresa=${!!companyData} tieneContacto=${!!contactData} | formaPago=${formaPagoDian_raw || 'no definido'}`);
 
         let clienteData: any = null
         let esEmpresa = false
@@ -274,7 +279,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-      ...companyData,
+     ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -335,7 +340,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-          ...p,
+         ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
@@ -371,7 +376,9 @@ export async function POST(req: NextRequest) {
           cantidad: productosEnriquecidos[0]?.quantity || getCustomValue(fullDeal.custom_fields, "siigo_cantidad") || 1,
           precio: productosEnriquecidos[0]?.price || fullDeal.amount || entry.valor,
           precio_total_oportunidad: totalOportunidad, // FIX MULTI-PRODUCTO - total completo
-          forma_pago_dian: getCustomValue(fullDeal.custom_fields, "siigo_forma_pago_dian") || "1",
+          forma_pago_dian: formaPagoDian,
+          forma_pago_dian_raw: formaPagoDian_raw,
+          facturar_a_raw: facturarA_raw,
           decision_facturacion: facturarA || "auto",
           // Debug
           productos_completos: productosEnriquecidos || [], // FIX PRODUCTO NOMBRE - ahora con nombre incluido + FIX MULTI-PRODUCTO todos
@@ -385,12 +392,15 @@ export async function POST(req: NextRequest) {
         (entry as any).cliente_data_raw = clienteData
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
+        // FIX V6 - Ahora bloquea si no diligencian facturar_a y forma_pago_dian
         ;(entry as any).faltantes_para_facturar = [
- !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
- !dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
- !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
- !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
- !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+!facturarA_raw? "siigo_facturar_a (PERSONA/EMPRESA)" : null,
+!formaPagoDian_raw? "siigo_forma_pago_dian" : null,
+!dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
+!dataParaSiigo.tipo_doc_dian? "siigo_tipo_doc_dian (13,31,22,41)" : null,
+!dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
+!dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
+!dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
