@@ -384,7 +384,7 @@ export async function POST(req: NextRequest) {
           productos_completos: productosEnriquecidos || [], // FIX PRODUCTO NOMBRE - ahora con nombre incluido + FIX MULTI-PRODUCTO todos
           custom_fields_encontrados: fullDeal.custom_fields || [],
           direccion_completa_obj: mainAddr,
-          cliente_fuente: esEmpresa? 'EMPRESA' : 'CONTACTO'
+          cliente_fuente: esEmpresa? 'EMPRESA' : 'PERSONA'
         };
 
         // Guardamos el resultado del enriquecimiento en el mismo log
