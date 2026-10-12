@@ -165,6 +165,25 @@ export async function POST(req: NextRequest) {
   console.log('--- CLIENTIFY REAL PAYLOAD ---');
   console.log(JSON.stringify(body, null, 2));
 
+  // =================================================================
+  // OBJETIVO 5.2.1: FILTRO - SOLO OPORTUNIDADES GANADAS
+  // Clientify dispara el webhook con cualquier actualización de oportunidad.
+  // Solo creamos evento en el integrador si se va a GANADA/WON.
+  // =================================================================
+  const estadoWebhook = String(
+    body.status || body.data?.status || body.deal_status || body.data?.deal_status ||
+    body.pipeline_status || body.data?.pipeline_status || body.state || body.data?.state ||
+    body.stage || body.data?.stage || body.status_name || body.data?.status_name || ''
+  ).toLowerCase()
+
+  const esGanadaWebhook = ['ganada', 'ganado', 'won', 'closed_won'].some(k => estadoWebhook.includes(k))
+
+  // Si el webhook trae estado y NO es ganada, ignoramos antes de crear el evento
+  if (estadoWebhook &&!esGanadaWebhook) {
+    console.log(`⏭️ Ignorado - Oportunidad ${body.id || body.data?.id} no está en Ganada, estado: ${estadoWebhook}`)
+    return NextResponse.json({ ok: true, ignored: true, reason: `Estado no es Ganada: ${estadoWebhook}` })
+  }
+
   // ===== DEDUP FIX V2 - evita doble evento de Clientify =====
   const incomingId = String(body.id || body.data?.id || '')
   const now = Date.now()
@@ -221,6 +240,18 @@ export async function POST(req: NextRequest) {
       console.log('DEAL RAW keys:', fullDeal? Object.keys(fullDeal) : 'null');
 
       if (fullDeal) {
+        // VALIDACIÓN EXTRA POR SI EL WEBHOOK NO TRAÍA ESTADO: verificamos el deal completo
+        const estadoFullDeal = String(fullDeal.status || fullDeal.deal_status || fullDeal.pipeline_status || fullDeal.stage || '').toLowerCase()
+        const esGanadaFull = ['ganada', 'ganado', 'won', 'closed_won'].some(k => estadoFullDeal.includes(k))
+        if (estadoFullDeal &&!esGanadaFull) {
+          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal}`)
+          // Eliminamos el entry que acabamos de crear porque no es ganada
+          memoryLogs = memoryLogs.filter((l: any) => String(l.oportunidad_id)!== String(dealId))
+          globalThis.__eventosClientify__ = memoryLogs
+          ;(global as any).memoryLogs = memoryLogs
+          return NextResponse.json({ ok: true, ignored: true, reason: `FullDeal no es Ganada: ${estadoFullDeal}` })
+        }
+
         // =================================================================
         // NUEVA LÓGICA V4 - DECISIÓN CLIENTE: PERSONA o EMPRESA (siigo_facturar_a)
         // Por qué existe: Normalmente una empresa está ligada a un contacto.
@@ -288,7 +319,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-   ...companyData,
+  ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -349,7 +380,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-       ...p,
+      ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
