@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { guardarEvento, leerEventos } from '@/lib/factoryStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -213,11 +212,10 @@ export async function POST(req: NextRequest) {
     estado: '✅ RECIBIDO - Simulación F1',
     payload: body // Guardamos todo el original por si se necesita revisar para el cliente Siigo
   }
-  // Lo ponemos de primero en la lista de logs
-  memoryLogs.unshift(entry)
-  if (memoryLogs.length > 20) memoryLogs.pop()
+  // Lo ponemos de primero en la lista de logs - PANEL BASICO: solo último evento
+  memoryLogs = [entry]
   globalThis.__eventosClientify__ = memoryLogs
-  await guardarEvento(entry)
+  ;(global as any).memoryLogs = memoryLogs
 
   // =================================================================
   // OBJETIVO 6: ENRIQUECIMIENTO DE DATOS PARA FACTURACIÓN SIIGO
@@ -248,7 +246,7 @@ export async function POST(req: NextRequest) {
         const esGanadaFull = ['ganada', 'ganado', 'won', 'closed_won', 'ganada - won', '3', '4'].some(k => estadoFullDeal.includes(k))
         console.log(`🔎 Estado FullDeal ${dealId}: "${estadoFullDeal}" esGanada=${esGanadaFull}`)
         if (estadoFullDeal &&!esGanadaFull) {
-          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal} - Se mantiene evento previo ganada`)
+          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal} - Se mantiene último evento previo`)
           return NextResponse.json({ ok: true, ignored: true, reason: `FullDeal no es Ganada: ${estadoFullDeal}` })
         }
 
@@ -380,7 +378,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-   ...p,
+  ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
@@ -459,22 +457,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const persisted = await leerEventos()
-  const logs = persisted || globalThis.__eventosClientify__ || memoryLogs
-  const seen = new Set<string>()
-  const deduped: any[] = []
-  for (const log of logs) {
-    const id = String(log.oportunidad_id)
-    if (!seen.has(id)) {
-      seen.add(id)
-      deduped.push(log)
-    }
-  }
-
+  const logs = globalThis.__eventosClientify__ || memoryLogs
   return NextResponse.json({
     ok: true,
     status: 'webhook_activo',
     cliente: process.env.CLIENTE_NOMBRE || 'test',
-    eventos: deduped.slice(0,20)
+    eventos: logs.slice(0,1)
   })
 }
