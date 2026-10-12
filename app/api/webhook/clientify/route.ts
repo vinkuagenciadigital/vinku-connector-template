@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
     const dupe = memoryLogs.find((l: any) => {
       if (String(l.oportunidad_id)!== incomingId) return false
       const t = new Date(l.fecha).getTime()
-      return!isNaN(t) && (now - t) < 120000
+      return!isNaN(t) && (now - t) < 10000
     })
     if (dupe) {
       console.log(`♻️ Duplicado ignorado para deal ${incomingId} (menos de 2 min)`)
@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-     ...companyData,
+    ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -340,7 +340,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-         ...p,
+        ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
