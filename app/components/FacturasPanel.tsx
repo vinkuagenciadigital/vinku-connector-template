@@ -18,7 +18,7 @@ export default function FacturasPanel() {
         mapaRef.current.set(String(f.oportunidad_id), f)
       }
       const combinado = Array.from(mapaRef.current.values())
-     .sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
       setFacturas(combinado.slice(0,20))
     } catch {}
@@ -38,8 +38,9 @@ export default function FacturasPanel() {
     <div className="space-y-3 max-h-[600px] overflow-auto pr-1">
       {facturas.map((f: any, idx: number) => {
         const isOpen = abierto === idx
-        const data = f.data || {}
-        const productos = data.productos || []
+        const raw = f.data || {}
+        const data = raw.data || raw
+        const productos = data.productos || raw.productos || []
         return (
         <div key={f.oportunidad_id} className="border border-[#8A6FE8]/20 rounded-xl text-sm bg-white overflow-hidden">
           <div className="p-3 cursor-pointer hover:bg-[#F8F7FF]/30 transition" onClick={()=> setAbierto(isOpen? null : idx)}>
@@ -98,14 +99,17 @@ export default function FacturasPanel() {
                       <span className="font-bold text-black text-[12px]">${Number(prod.price || 0).toLocaleString()}</span>
                     </div>
                   )) : (
-                    <div className="bg-white border rounded-lg p-2 text-[10px]">
-                      <pre className="whitespace-pre-wrap break-all text-black/70">{JSON.stringify(data, null, 2)}</pre>
+                    <div className="flex items-center justify-between pt-2 border-t border-dashed border-[#8A6FE8]/20">
+                      <span className="text-[10px] uppercase tracking-wide text-black/50 font-bold">Total factura</span>
+                      <span className="font-bold text-black text-[13px]">${Number(data.amount || f.total || 0).toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between pt-2 border-t border-dashed border-[#8A6FE8]/20">
-                    <span className="text-[10px] uppercase tracking-wide text-black/50 font-bold">Total factura</span>
-                    <span className="font-bold text-black text-[13px]">${Number(f.total || 0).toLocaleString()}</span>
-                  </div>
+                  {productos.length > 0 && (
+                    <div className="flex items-center justify-between pt-2 border-t border-dashed border-[#8A6FE8]/20">
+                      <span className="text-[10px] uppercase tracking-wide text-black/50 font-bold">Total factura</span>
+                      <span className="font-bold text-black text-[13px]">${Number(data.amount || f.total || 0).toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
