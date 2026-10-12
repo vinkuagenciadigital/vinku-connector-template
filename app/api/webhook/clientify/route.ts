@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { guardarEvento, leerEventos } from '@/lib/factoryStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -216,6 +217,7 @@ export async function POST(req: NextRequest) {
   memoryLogs.unshift(entry)
   if (memoryLogs.length > 20) memoryLogs.pop()
   globalThis.__eventosClientify__ = memoryLogs
+  await guardarEvento(entry)
 
   // =================================================================
   // OBJETIVO 6: ENRIQUECIMIENTO DE DATOS PARA FACTURACIÓN SIIGO
@@ -246,11 +248,7 @@ export async function POST(req: NextRequest) {
         const esGanadaFull = ['ganada', 'ganado', 'won', 'closed_won', 'ganada - won', '3', '4'].some(k => estadoFullDeal.includes(k))
         console.log(`🔎 Estado FullDeal ${dealId}: "${estadoFullDeal}" esGanada=${esGanadaFull}`)
         if (estadoFullDeal &&!esGanadaFull) {
-          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal}`)
-          // Eliminamos el entry que acabamos de crear porque no es ganada
-          memoryLogs = memoryLogs.filter((l: any) => String(l.oportunidad_id)!== String(dealId))
-          globalThis.__eventosClientify__ = memoryLogs
-          ;(global as any).memoryLogs = memoryLogs
+          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal} - Se mantiene evento previo ganada`)
           return NextResponse.json({ ok: true, ignored: true, reason: `FullDeal no es Ganada: ${estadoFullDeal}` })
         }
 
@@ -382,7 +380,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-    ...p,
+   ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
@@ -461,7 +459,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const logs = globalThis.__eventosClientify__ || memoryLogs
+  const persisted = await leerEventos()
+  const logs = persisted || globalThis.__eventosClientify__ || memoryLogs
   const seen = new Set<string>()
   const deduped: any[] = []
   for (const log of logs) {
