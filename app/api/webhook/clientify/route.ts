@@ -210,7 +210,11 @@ export async function POST(req: NextRequest) {
     contact: body.contact?.name || body.data?.contact_name || body.name || 'Contacto Test',
     valor: body.value || body.data?.amount || 0,
     estado: '✅ RECIBIDO - Simulación F1',
-    payload: body // Guardamos todo el original por si se necesita revisar para el cliente Siigo
+    payload: body, // Guardamos todo el original por si se necesita revisar para el cliente Siigo
+    // FIX ANTI-FALSO-LISTO - Inicializa como NO listo hasta que se carguen datos completos
+    datos_completos_siigo: null,
+    faltantes_para_facturar: ["Cargando datos completos de Clientify..."],
+    listo_para_siigo: false
   }
   // Lo ponemos de primero en la lista de logs - PANEL BASICO: solo último evento
   memoryLogs = [entry]
@@ -235,10 +239,23 @@ export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.CLIENTIFY_API_KEY;
     const dealId = body.data?.id || body.id;
+    if (!apiKey) {
+      console.log('⚠️ Falta CLIENTIFY_API_KEY');
+      entry.faltantes_para_facturar = ["Falta CLIENTIFY_API_KEY en ENV"]
+      entry.listo_para_siigo = false
+      return NextResponse.json({ ok: true, log: entry })
+    }
     if (apiKey && dealId) {
       console.log(`🔍 Buscando datos completos para deal ${dealId}...`);
       const fullDeal = await getFullDeal(apiKey, dealId);
       console.log('DEAL RAW keys:', fullDeal? Object.keys(fullDeal) : 'null');
+
+      if (!fullDeal) {
+        console.log(`⚠️ fullDeal null para ${dealId} - no se pudo cargar`);
+        entry.faltantes_para_facturar = [`No se pudo cargar deal ${dealId} desde Clientify API`]
+        entry.listo_para_siigo = false
+        return NextResponse.json({ ok: true, log: entry })
+      }
 
       if (fullDeal) {
         // VALIDACIÓN EXTRA POR SI EL WEBHOOK NO TRAÍA ESTADO: verificamos el deal completo
@@ -246,7 +263,11 @@ export async function POST(req: NextRequest) {
         const esGanadaFull = ['ganada', 'ganado', 'won', 'closed_won', 'ganada - won', '3', '4'].some(k => estadoFullDeal.includes(k))
         console.log(`🔎 Estado FullDeal ${dealId}: "${estadoFullDeal}" esGanada=${esGanadaFull}`)
         if (estadoFullDeal &&!esGanadaFull) {
-          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal} - Se mantiene último evento previo`)
+          console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal} - Se limpia evento incompleto`)
+          // FIX: No dejar evento vacío con "Listo para Siigo", limpiar memoria
+          memoryLogs = []
+          globalThis.__eventosClientify__ = memoryLogs
+          ;(global as any).memoryLogs = memoryLogs
           return NextResponse.json({ ok: true, ignored: true, reason: `FullDeal no es Ganada: ${estadoFullDeal}` })
         }
 
@@ -378,7 +399,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-  ...p,
+ ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
@@ -449,7 +470,10 @@ export async function POST(req: NextRequest) {
     }
   } catch (e: any) {
     console.log("⚠️ No se pudo obtener datos completos (normal si no hay API Key):", e.message);
-    // No rompe el webhook, solo loguea el error
+    // FIX ANTI-FALSO-LISTO - Nunca dejar como Listo para Siigo si hubo error
+    entry.faltantes_para_facturar = [`Error cargando datos: ${e.message}`]
+    entry.listo_para_siigo = false
+    entry.datos_completos_siigo = null
   }
 
   // 5.4 - Respondemos a Clientify que todo OK (200). Si no respondemos 200, Clientify reintenta.
