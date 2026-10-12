@@ -3,6 +3,18 @@ export const revalidate = 0;
 
 import { createSiigoInvoice } from '@/lib/siigoService';
 
+// Limpia HTML gigante de Clientify -> texto plano corto para Siigo
+function cleanDesc(html: any): string {
+  if (!html) return ""
+  let txt = String(html)
+  // quita tags html <p>, <span>, data-sfc-cp, etc
+  txt = txt.replace(/<[^>]*>/g, " ")
+  // limpia espacios multiples
+  txt = txt.replace(/\s+/g, " ").trim()
+  // Siigo solo permite max 200-300 chars
+  return txt.substring(0, 200)
+}
+
 export async function GET(req: Request) {
   try {
     if (!process.env.MOCK_SIIGO) process.env.MOCK_SIIGO = 'true';
@@ -26,6 +38,15 @@ export async function GET(req: Request) {
       return Response.json({ error: 'El evento no tiene datos_completos_siigo', evento: ultimo }, { status: 400 });
     }
 
+    // FIX PUNTO 2: Limpiamos descripcion HTML gigante antes de mandar a Siigo
+    const productosLimpios = (s.productos_completos || []).map((p: any) => ({
+     ...p,
+      // guarda nombre corto
+      name: (p.name || p.product_name || '').substring(0, 100),
+      // limpia descripcion gigante de SFC
+      description: cleanDesc(p.description || p.name || ''),
+    }));
+
     // 2. Simulamos la factura con esos datos 100% reales de Clientify
     const facturaSimulada = await createSiigoInvoice({
       clientName: s.razon_social,
@@ -36,14 +57,18 @@ export async function GET(req: Request) {
       tipoDoc: s.tipo_doc_dian,
       direccion: s.direccion,
       ciudadDian: s.ciudad_dian,
-      productos: s.productos_completos,
+      productos: productosLimpios,
       formaPago: s.forma_pago_dian
     } as any);
 
     return Response.json({
       mensaje: 'Test con datos REALES de Clientify -> Simulación Siigo OK',
       origen: 'Tomado de /api/webhook/clientify (lo mismo que ve tu panel)',
-      datosReales: s,
+      // mostramos datos ya limpios para que no se vea el muro de HTML
+      datosReales: {
+       ...s,
+        productos_completos: productosLimpios
+      },
       facturaSimulada
     });
 
