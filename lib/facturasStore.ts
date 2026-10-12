@@ -14,15 +14,23 @@ export type FacturaSiigo = {
   cliente_fuente: string
 }
 
-let facturas: FacturaSiigo[] = []
+declare global {
+  var __facturas__: FacturaSiigo[] | undefined
+}
+
+if (!globalThis.__facturas__) {
+  globalThis.__facturas__ = []
+}
 
 export function addFactura(f: FacturaSiigo) {
   // para que no se duplique si pruebas 2 veces la misma oportunidad
+  let facturas = globalThis.__facturas__!
   facturas = facturas.filter(x => x.oportunidad_id!== f.oportunidad_id)
   facturas.unshift(f)
   if (facturas.length > 20) facturas.pop()
+  globalThis.__facturas__ = facturas
 }
 
 export function getFacturas() {
-  return facturas
+  return globalThis.__facturas__!
 }
