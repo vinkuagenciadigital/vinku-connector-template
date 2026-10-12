@@ -17,6 +17,7 @@ export const revalidate = 0
 import Link from 'next/link'
 import CopyButton from './components/CopyButton'
 import EventsPanel from './components/EventsPanel'
+import FacturasPanel from './components/FacturasPanel'
 
 export default function Home() {
 const nombreCliente = process.env.CLIENTE_NOMBRE
@@ -102,9 +103,7 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
 
           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold mb-4 text-black">Facturas Generadas en Siigo</h2>
-            <div className="text-sm text-black/60">
-              Aquí muestras la respuesta de Siigo (id factura, estado).
-            </div>
+            <FacturasPanel />
           </div>
         </div>
 
