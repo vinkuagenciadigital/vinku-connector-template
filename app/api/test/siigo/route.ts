@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { createSiigoInvoice } from '@/lib/siigoService';
-import { addFactura } from '@/lib/facturasStore';
+import { addFactura, getFacturas } from '@/lib/facturasStore';
 
 // Limpia HTML gigante de Clientify -> texto plano corto para Siigo
 function cleanDesc(html: any): string {
@@ -37,6 +37,16 @@ export async function GET(req: Request) {
 
     if (!s) {
       return Response.json({ error: 'El evento no tiene datos_completos_siigo', evento: ultimo }, { status: 400 });
+    }
+
+    // EVITA que se generen muchos MOCK del mismo ID
+    const force = url.searchParams.get('force') === 'true';
+    const existente = getFacturas().find(f => f.oportunidad_id === ultimo.oportunidad_id);
+    if (existente && !force) {
+      return Response.json({
+        mensaje: 'Ya existe una factura MOCK para esta oportunidad. No se generó otra.',
+        facturaExistente: existente,
+      });
     }
 
     // FIX PUNTO 2: Limpiamos descripcion HTML gigante antes de mandar a Siigo
