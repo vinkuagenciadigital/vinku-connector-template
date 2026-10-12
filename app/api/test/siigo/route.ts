@@ -22,11 +22,17 @@ export async function GET(req: Request) {
 
     // 1. Tomamos los mismos datos reales que usa tu panel
     const url = new URL(req.url);
-    const baseUrl = `${url.protocol}//${url.host}`;
-
-    const r = await fetch(`${baseUrl}/api/webhook/clientify`, { cache: 'no-store' });
-    const data = await r.json();
-    const eventos = data.eventos || [];
+    // FIX PARPADEO: lee directo de memoria global, no hace fetch a sí mismo que cae en lambda vacía en Vercel
+    const allLogs = (globalThis as any).__eventosClientify__ || (global as any).memoryLogs || []
+    const seen = new Set<string>()
+    const eventos: any[] = []
+    for (const log of allLogs) {
+      const id = String(log.oportunidad_id)
+      if (!seen.has(id)) {
+        seen.add(id)
+        eventos.push(log)
+      }
+    }
 
     if (eventos.length === 0) {
       return Response.json({ error: 'Aún no hay eventos de Clientify. Mueve una oportunidad a Ganada primero.' }, { status: 404 });
@@ -42,7 +48,7 @@ export async function GET(req: Request) {
     // EVITA que se generen muchos MOCK del mismo ID
     const force = url.searchParams.get('force') === 'true';
     const existente = getFacturas().find(f => f.oportunidad_id === ultimo.oportunidad_id);
-    if (existente && !force) {
+    if (existente &&!force) {
       return Response.json({
         mensaje: 'Ya existe una factura MOCK para esta oportunidad. No se generó otra.',
         facturaExistente: existente,
@@ -51,7 +57,7 @@ export async function GET(req: Request) {
 
     // FIX PUNTO 2: Limpiamos descripcion HTML gigante antes de mandar a Siigo
     const productosLimpios = (s.productos_completos || []).map((p: any) => ({
-     ...p,
+    ...p,
       // guarda nombre corto
       name: (p.name || p.product_name || '').substring(0, 100),
       // limpia descripcion gigante de SFC
@@ -91,7 +97,7 @@ export async function GET(req: Request) {
       origen: 'Tomado de /api/webhook/clientify (lo mismo que ve tu panel)',
       // mostramos datos ya limpios para que no se vea el muro de HTML
       datosReales: {
-       ...s,
+      ...s,
         productos_completos: productosLimpios
       },
       facturaSimulada
