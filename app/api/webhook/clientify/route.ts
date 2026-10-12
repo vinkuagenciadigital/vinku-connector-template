@@ -176,10 +176,11 @@ export async function POST(req: NextRequest) {
     body.stage || body.data?.stage || body.status_name || body.data?.status_name || ''
   ).toLowerCase()
 
-  const esGanadaWebhook = ['ganada', 'ganado', 'won', 'closed_won'].some(k => estadoWebhook.includes(k))
+  const esGanadaWebhook = ['ganada', 'ganado', 'won', 'closed_won', '3', '4', 'ganada - won'].some(k => estadoWebhook.includes(k))
+  const esDescartableWebhook = ['perdida', 'perdido', 'lost', 'closed_lost', 'open', 'abierta'].some(k => estadoWebhook.includes(k))
 
-  // Si el webhook trae estado y NO es ganada, ignoramos antes de crear el evento
-  if (estadoWebhook &&!esGanadaWebhook) {
+  // Si el webhook trae estado y es claramente NO ganada, ignoramos antes de crear el evento
+  if (estadoWebhook && esDescartableWebhook &&!esGanadaWebhook) {
     console.log(`⏭️ Ignorado - Oportunidad ${body.id || body.data?.id} no está en Ganada, estado: ${estadoWebhook}`)
     return NextResponse.json({ ok: true, ignored: true, reason: `Estado no es Ganada: ${estadoWebhook}` })
   }
@@ -241,9 +242,11 @@ export async function POST(req: NextRequest) {
 
       if (fullDeal) {
         // VALIDACIÓN EXTRA POR SI EL WEBHOOK NO TRAÍA ESTADO: verificamos el deal completo
-        const estadoFullDeal = String(fullDeal.status || fullDeal.deal_status || fullDeal.pipeline_status || fullDeal.stage || '').toLowerCase()
-        const esGanadaFull = ['ganada', 'ganado', 'won', 'closed_won'].some(k => estadoFullDeal.includes(k))
-        if (estadoFullDeal &&!esGanadaFull) {
+        const estadoFullDeal = String(fullDeal.status || fullDeal.deal_status || fullDeal.pipeline_status || fullDeal.stage || fullDeal.status_name || '').toLowerCase()
+        const esGanadaFull = ['ganada', 'ganado', 'won', 'closed_won', '3', '4', 'ganada - won'].some(k => estadoFullDeal.includes(k))
+        const esDescartableFull = ['perdida', 'perdido', 'lost', 'closed_lost', 'open', 'abierta'].some(k => estadoFullDeal.includes(k))
+        console.log(`🔎 Estado FullDeal ${dealId}: "${estadoFullDeal}" ganada=${esGanadaFull} descartable=${esDescartableFull}`)
+        if (estadoFullDeal && esDescartableFull &&!esGanadaFull) {
           console.log(`⏭️ Ignorado en FullDeal - deal ${dealId} estado: ${estadoFullDeal}`)
           // Eliminamos el entry que acabamos de crear porque no es ganada
           memoryLogs = memoryLogs.filter((l: any) => String(l.oportunidad_id)!== String(dealId))
@@ -319,7 +322,7 @@ export async function POST(req: NextRequest) {
         // Merge útil: si factura a empresa pero empresa no tiene email/tel, usa el del contacto ligado
         if (clienteData && companyData && contactData && esEmpresa) {
           clienteData = {
-  ...companyData,
+ ...companyData,
             emails: (companyData.emails && companyData.emails.length)? companyData.emails : contactData.emails,
             phones: (companyData.phones && companyData.phones.length)? companyData.phones : contactData.phones,
             _contact_fallback_used: true
@@ -380,7 +383,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
-      ...p,
+     ...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
