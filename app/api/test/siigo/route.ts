@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       ciudadDian: s.ciudad_dian,
       productos: s.productos_completos,
       formaPago: s.forma_pago_dian
-    });
+    } as any);
 
     return Response.json({
       mensaje: 'Test con datos REALES de Clientify -> Simulación Siigo OK',
