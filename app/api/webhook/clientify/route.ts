@@ -15,7 +15,7 @@ declare global {
 if (!globalThis.__eventosClientify__) {
   globalThis.__eventosClientify__ = (global as any).memoryLogs || []
 }
-let memoryLogs: any[] = globalThis.__eventosClientify__
+let memoryLogs: any[] = globalThis.__eventosClientify__ || []
 ;(global as any).memoryLogs = memoryLogs
 globalThis.__eventosClientify__ = memoryLogs
 
