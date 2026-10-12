@@ -1,20 +1,31 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 export default function FacturasPanel() {
   const [facturas, setFacturas] = useState<any[]>([])
+  // FIX VERCEL MULTI-LAMBDA: acumulativo para que no alterne como pasaba en eventos
+  const mapaRef = useRef<Map<string, any>>(new Map())
 
   async function cargar() {
     try {
       const r = await fetch('/api/facturas', { cache: 'no-store' })
       const d = await r.json()
-      setFacturas(d.facturas || [])
+      const nuevas = d.facturas || []
+      if (nuevas.length === 0) return
+
+      for (const f of nuevas) {
+        mapaRef.current.set(String(f.oportunidad_id), f)
+      }
+      const combinado = Array.from(mapaRef.current.values())
+      .sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+
+      setFacturas(combinado.slice(0,20))
     } catch {}
   }
 
   useEffect(() => {
     cargar()
-    const i = setInterval(cargar, 3000)
+    const i = setInterval(cargar, 15000)
     return () => clearInterval(i)
   }, [])
 
@@ -25,7 +36,7 @@ export default function FacturasPanel() {
   return (
     <div className="space-y-3 max-h-[600px] overflow-auto pr-1">
       {facturas.map((f: any, idx: number) => (
-        <div key={idx} className="border border-green-200 rounded-xl p-3 text-sm bg-green-50/50">
+        <div key={f.oportunidad_id} className="border border-green-200 rounded-xl p-3 text-sm bg-green-50/50">
           <div className="flex justify-between items-start gap-2">
             <div>
               <div className="font-semibold text-black text-[13px]">{f.razon_social} - ${Number(f.total||0).toLocaleString()}</div>
