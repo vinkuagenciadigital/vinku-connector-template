@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { createSiigoInvoice } from '@/lib/siigoService';
+import { addFactura } from '@/lib/facturasStore';
 
 // Limpia HTML gigante de Clientify -> texto plano corto para Siigo
 function cleanDesc(html: any): string {
@@ -60,6 +61,20 @@ export async function GET(req: Request) {
       productos: productosLimpios,
       formaPago: s.forma_pago_dian
     } as any);
+
+    // NUEVO: Guardamos la factura para que aparezca en el panel derecho
+    addFactura({
+      id: (facturaSimulada as any).invoiceId || (facturaSimulada as any).id || `MOCK-${Date.now()}`,
+      fecha: new Date().toISOString(),
+      oportunidad_id: ultimo.oportunidad_id,
+      razon_social: s.razon_social,
+      nit: s.nit,
+      total: s.precio_total_oportunidad || ultimo.valor,
+      estado: (facturaSimulada as any).success? 'CREADA (MOCK)' : 'ERROR',
+      origen: 'MOCK',
+      data: facturaSimulada,
+      cliente_fuente: s.cliente_fuente
+    })
 
     return Response.json({
       mensaje: 'Test con datos REALES de Clientify -> Simulación Siigo OK',
