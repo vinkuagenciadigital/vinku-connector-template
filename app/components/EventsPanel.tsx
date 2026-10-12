@@ -1,16 +1,27 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 export default function EventsPanel() {
   const [eventos, setEventos] = useState<any[]>([])
   // NUEVO: Estado para saber qué tablero está abierto (null = todos cerrados, 0 = primero abierto)
   const [abierto, setAbierto] = useState<number | null>(0)
+  // FIX PARPADEO: guarda lo último bueno
+  const cache = useRef<any[]>([])
 
   async function cargar() {
     try {
       const r = await fetch('/api/webhook/clientify', { cache: 'no-store' })
       const d = await r.json()
-      setEventos(d.eventos || [])
+      const nuevos = d.eventos || []
+      // FIX PARPADEO: si Vercel responde vacío, no borres lo que ya tenías
+      if (nuevos.length > 0) {
+        cache.current = nuevos
+        setEventos(nuevos)
+      } else if (cache.current.length > 0) {
+        setEventos(cache.current)
+      } else {
+        setEventos(nuevos)
+      }
     } catch {}
   }
 
