@@ -14,20 +14,18 @@ export default function EventsPanel() {
       const d = await r.json()
       const nuevos = d.eventos || []
       // FIX PARPADEO: si Vercel responde vacío, no borres lo que ya tenías
+      // y no hagas setEventos para no provocar re-render / parpadeo
       if (nuevos.length > 0) {
         cache.current = nuevos
         setEventos(nuevos)
-      } else if (cache.current.length > 0) {
-        setEventos(cache.current)
-      } else {
-        setEventos(nuevos)
       }
+      // si nuevos está vacío, no hace nada y mantiene lo que ya está en pantalla
     } catch {}
   }
 
   useEffect(() => {
     cargar()
-    const i = setInterval(cargar, 3000)
+    const i = setInterval(cargar, 10000) // lo subí a 10s para que no golpee tanto a Vercel
     return () => clearInterval(i)
   }, [])
 
