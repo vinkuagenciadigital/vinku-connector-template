@@ -5,8 +5,8 @@ export default function EventsPanel() {
   const [eventos, setEventos] = useState<any[]>([])
   // NUEVO: Estado para saber qué tablero está abierto (null = todos cerrados, 0 = primero abierto)
   const [abierto, setAbierto] = useState<number | null>(0)
-  // FIX PARPADEO: guarda lo último bueno
-  const cache = useRef<any[]>([])
+  // FIX PARPADEO: guarda lo último bueno + FIX VERCEL MULTI-LAMBDA: acumulativo para que no alterne
+  const mapaRef = useRef<Map<string, any>>(new Map())
 
   async function cargar() {
     try {
@@ -15,17 +15,22 @@ export default function EventsPanel() {
       const nuevos = d.eventos || []
       // FIX PARPADEO: si Vercel responde vacío, no borres lo que ya tenías
       // y no hagas setEventos para no provocar re-render / parpadeo
-      if (nuevos.length > 0) {
-        cache.current = nuevos
-        setEventos(nuevos)
+      if (nuevos.length === 0) return
+
+      // FIX INTERMITENCIA: Vercel devuelve 1 evento por lambda distinta, lo acumulamos en el navegador
+      for (const ev of nuevos) {
+        mapaRef.current.set(String(ev.oportunidad_id), ev)
       }
-      // si nuevos está vacío, no hace nada y mantiene lo que ya está en pantalla
+      const combinado = Array.from(mapaRef.current.values())
+       .sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+
+      setEventos(combinado.slice(0,20))
     } catch {}
   }
 
   useEffect(() => {
     cargar()
-    const i = setInterval(cargar, 10000) // lo subí a 10s para que no golpee tanto a Vercel
+    const i = setInterval(cargar, 15000) // lo subí a 15s para que no golpee tanto a Vercel y no alterne
     return () => clearInterval(i)
   }, [])
 
@@ -47,7 +52,7 @@ export default function EventsPanel() {
         const isOpen = abierto === idx
 
         return (
-          <div key={idx} className="border border-[#8A6FE8]/20 rounded-xl text-sm bg-white overflow-hidden">
+          <div key={ev.oportunidad_id} className="border border-[#8A6FE8]/20 rounded-xl text-sm bg-white overflow-hidden">
             {/* Header - AHORA CLICKEABLE PARA DESPLEGAR */}
             <div
               className="p-3 cursor-pointer hover:bg-[#F8F7FF]/30 transition"
