@@ -475,7 +475,7 @@ export async function POST(req: NextRequest) {
 !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
 !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
           // Faltantes de lib/eligibility.ts (sin productos, importe $0, falta NIT/email)
-        ...eligibility.faltantes,
+       ...eligibility.faltantes,
         ].filter(Boolean) as string[])];
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
@@ -484,7 +484,7 @@ export async function POST(req: NextRequest) {
         // --- INICIO INTEGRACIÓN clientifyNotes.ts ---
         // Si no es apta, deja la nota en Clientify con los faltantes. No rompe el webhook si falla.
         if (!(entry as any).listo_para_siigo) {
-          try { await crearNotaClientify(apiKey, String(extractId(contactInput) || ""), (entry as any).faltantes_para_facturar, String(dealId)) } catch {}
+          try { await crearNotaClientify(String(extractId(contactInput) || ""), (entry as any).faltantes_para_facturar) } catch {}
         }
         // --- FIN INTEGRACIÓN clientifyNotes.ts ---
 
