@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkEligibility } from '@/lib/eligibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -399,7 +400,7 @@ export async function POST(req: NextRequest) {
             nReal = nReal || nombreReal
           }
           return {
- ...p,
+...p,
             sku: sReal || p.sku || p.code || `SIN-SKU-${idx}`,
             name: nReal || p.name || p.product_name || p.title || 'Producto',
             product_name: nReal || p.name || p.product_name || 'Producto',
@@ -452,6 +453,18 @@ export async function POST(req: NextRequest) {
 
         // Lista de lo que falta para poder llamar a Siigo (validación DIAN)
         // FIX V6 - Ahora bloquea si no diligencian facturar_a y forma_pago_dian
+        // --- INICIO INTEGRACIÓN eligibility.ts ---
+        // Se arma el Opportunity que pide checkEligibility() con lo que ya calculaste arriba.
+        // No se duplican cálculos: nit/email vienen de dataParaSiigo, productos/importe de productosEnriquecidos/totalOportunidad.
+        const eligibility = checkEligibility({
+          id: String(fullDeal.id || dealId),
+          name: fullDeal.name || fullDeal.title || "",
+          status: "won",
+          amount: totalOportunidad,
+          products: productosEnriquecidos.map((p: any) => ({ name: p.name || p.product_name || "Producto", price: Number(p.price || 0), quantity: Number(p.quantity || 1) })),
+          contact: { id: String(extractId(contactInput) || ""), name: dataParaSiigo.razon_social || "", email: dataParaSiigo.email || undefined, nit: dataParaSiigo.nit || undefined },
+        })
+        // --- FIN INTEGRACIÓN eligibility.ts ---
         ;(entry as any).faltantes_para_facturar = [
 !facturarA_raw? "siigo_facturar_a (PERSONA/EMPRESA)" : null,
 !formaPagoDian_raw? "siigo_forma_pago_dian" : null,
@@ -460,6 +473,8 @@ export async function POST(req: NextRequest) {
 !dataParaSiigo.responsable_iva? "siigo_responsable_iva" : null,
 !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
 !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
+          // Faltantes de lib/eligibility.ts (sin productos, importe $0, falta NIT/email)
+         ...eligibility.faltantes,
         ].filter(Boolean);
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
