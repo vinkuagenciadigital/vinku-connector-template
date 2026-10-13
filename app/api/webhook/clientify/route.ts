@@ -466,7 +466,7 @@ export async function POST(req: NextRequest) {
           contact: { id: String(extractId(contactInput) || ""), name: dataParaSiigo.razon_social || "", email: dataParaSiigo.email || undefined, nit: dataParaSiigo.nit || undefined },
         })
         // --- FIN INTEGRACIÓN eligibility.ts ---
-        ;(entry as any).faltantes_para_facturar = [...new Set([
+        ;(entry as any).faltantes_para_facturar = Array.from(new Set([
 !facturarA_raw? "siigo_facturar_a (PERSONA/EMPRESA)" : null,
 !formaPagoDian_raw? "siigo_forma_pago_dian" : null,
 !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
