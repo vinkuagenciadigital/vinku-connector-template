@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkEligibility } from '@/lib/eligibility'
+import { crearNotaClientify } from '@/lib/clientifyNotes'
 
 export const dynamic = 'force-dynamic'
 
@@ -465,7 +466,7 @@ export async function POST(req: NextRequest) {
           contact: { id: String(extractId(contactInput) || ""), name: dataParaSiigo.razon_social || "", email: dataParaSiigo.email || undefined, nit: dataParaSiigo.nit || undefined },
         })
         // --- FIN INTEGRACIÓN eligibility.ts ---
-        ;(entry as any).faltantes_para_facturar = [
+        ;(entry as any).faltantes_para_facturar = [...new Set([
 !facturarA_raw? "siigo_facturar_a (PERSONA/EMPRESA)" : null,
 !formaPagoDian_raw? "siigo_forma_pago_dian" : null,
 !dataParaSiigo.nit? "NIF/ID fiscal (Contacto/Empresa)" : null,
@@ -474,11 +475,18 @@ export async function POST(req: NextRequest) {
 !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
 !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
           // Faltantes de lib/eligibility.ts (sin productos, importe $0, falta NIT/email)
-         ...eligibility.faltantes,
-        ].filter(Boolean);
+        ...eligibility.faltantes,
+        ].filter(Boolean) as string[])];
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
         ;(entry as any).listo_para_siigo = (entry as any).faltantes_para_facturar.length === 0;
+
+        // --- INICIO INTEGRACIÓN clientifyNotes.ts ---
+        // Si no es apta, deja la nota en Clientify con los faltantes. No rompe el webhook si falla.
+        if (!(entry as any).listo_para_siigo) {
+          try { await crearNotaClientify(apiKey, String(extractId(contactInput) || ""), (entry as any).faltantes_para_facturar, String(dealId)) } catch {}
+        }
+        // --- FIN INTEGRACIÓN clientifyNotes.ts ---
 
         console.log("📦 Datos para Siigo:", dataParaSiigo);
       }
