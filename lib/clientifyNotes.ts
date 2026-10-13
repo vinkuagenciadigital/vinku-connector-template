@@ -47,17 +47,38 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // BLOQUE 2: EL POST A CLIENTIFY API
   // ---------------------------------------------------------------
   // Qué hace:
-  // Crea una nota en Clientify con POST /v1/notes/.
+  // Crea una nota en Clientify con POST /{ver}/notes/.
   // - deal: a qué oportunidad se le pega la nota.
   // - comment: el texto del Bloque 1.
   // - Authorization: Token + CLIENTIFY_API_KEY de ENV.
-  // Nota: No validamos la respuesta aquí. Si Clientify devuelve
-  // error (ej: oportunidad no existe), route.ts lo captura con
-  // try/catch y el webhook sigue respondiendo 200.
+  // COMPATIBILIDAD V2/V1 - Prioridad V2, igual que en route.ts
+  // para contactos y empresas:
+  // - V2 primero: deal como ID directo.
+  // - V1 fallback: deal como URL completa.
+  // Si V2 responde OK, no se intenta V1 para no duplicar la nota.
+  // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
+  // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
-  await fetch(`https://api.clientify.net/v1/notes/`, {
-    method: "POST",
-    headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ deal: dealId, comment: texto })
-  })
+  for (const ver of ["v2", "v1"]) {
+    const dealField = ver === "v2"
+      ? dealId
+      : `https://api.clientify.net/v1/deals/${dealId}/`
+
+    const res = await fetch(`https://api.clientify.net/${ver}/notes/`, {
+      method: "POST",
+      headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ deal: dealField, comment: texto })
+    })
+
+    console.log(`📝 Nota oportunidad ${dealId} -> Clientify ${ver} status: ${res.status}`)
+
+    if (res.ok) {
+      console.log(`✅ Nota creada en oportunidad ${dealId} vía ${ver}`)
+      return
+    }
+
+    console.log(`⚠️ Nota no creada en ${ver}: ${res.status} - ${(await res.text()).substring(0, 500)}`)
+  }
+
+  console.log(`❌ Nota no creada en V2 ni V1 para oportunidad ${dealId}`)
 }
