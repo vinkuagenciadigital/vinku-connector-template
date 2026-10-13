@@ -68,7 +68,7 @@ export function checkEligibility(opp: Opportunity): Eligibility {
   // En route.ts lo sacamos de clienteData.tax_id / nif / custom_fields.
   // Si ahí viene vacío, aquí lo marcamos.
   // ---------------------------------------------------------------
-  if (!opp.contact?.nit) faltantes.push("Falta NIT del contacto")
+  if (!opp.contact?.nit) faltantes.push("NIF/ID fiscal (Contacto/Empresa)")
 
   // ---------------------------------------------------------------
   // BLOQUE 2: CANAL DE ENTREGA - EL EMAIL
