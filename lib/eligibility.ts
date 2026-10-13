@@ -103,12 +103,11 @@ export function checkEligibility(opp: Opportunity): Eligibility {
   // Por qué bloquea en $0:
   // Facturar $0 en Siigo genera una factura inválida ante la DIAN
   // y contamina los reportes. Mejor bloquear y avisar.
-  // Nota: Si ya marcamos "Sin productos", este bloque también
-  // marcará "Importe es $0" porque la suma da 0. Es intencional:
-  // son dos síntomas del mismo problema y así el comercial lo ve claro.
+  // Nota: Si ya marcamos "Sin productos", este bloque NO vuelve a
+  // marcar "Importe es $0" para no duplicar el mismo problema.
   // ---------------------------------------------------------------
   const importe = opp.products?.reduce((s, p) => s + p.price * p.quantity, 0) || 0
-  if (importe <= 0) faltantes.push("Importe es $0")
+  if (importe <= 0 && opp.products && opp.products.length > 0) faltantes.push("Importe es $0")
 
   // ---------------------------------------------------------------
   // BLOQUE 5: DECISIÓN FINAL
