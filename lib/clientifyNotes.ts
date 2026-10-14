@@ -60,10 +60,10 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
   for (const body of [
-    { title: "Vinku - No se pudo generar factura en Siigo", content: texto, type: "note" },
-    { title: "Vinku - No se pudo generar factura en Siigo", content: texto },
-    { comment: texto },
-    { content: texto },
+    { object_id: Number(dealId), title: "Vinku - No se pudo generar factura en Siigo", content: texto, type: "note" },
+    { object_id: dealId, title: "Vinku - No se pudo generar factura en Siigo", content: texto },
+    { object_id: Number(dealId), comment: texto },
+    { object_id: Number(dealId), content: texto },
   ]) {
     const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/`, {
       method: "POST",
