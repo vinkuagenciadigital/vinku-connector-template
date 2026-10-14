@@ -59,6 +59,28 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
+  for (const body of [
+    { title: "Vinku - No se pudo generar factura en Siigo", content: texto, type: "note" },
+    { title: "Vinku - No se pudo generar factura en Siigo", content: texto },
+    { comment: texto },
+    { content: texto },
+  ]) {
+    const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/`, {
+      method: "POST",
+      headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    })
+
+    console.log(`📝 Wallentry oportunidad ${dealId} status: ${res.status} body: ${JSON.stringify(body).substring(0, 120)}`)
+
+    if (res.status === 201 || res.ok) {
+      console.log(`✅ Nota creada en timeline de oportunidad ${dealId} vía wallentries`)
+      return
+    }
+
+    console.log(`⚠️ Wallentry no creado: ${res.status} - ${(await res.text()).substring(0, 500)}`)
+  }
+
   for (const ver of ["v2", "v1"]) {
     const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
 
