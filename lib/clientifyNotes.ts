@@ -60,14 +60,21 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
   for (const ver of ["v2", "v1"]) {
-    const dealField = ver === "v2"
-      ? dealId
-      : `https://api.clientify.net/v1/deals/${dealId}/`
+    const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
 
-    const res = await fetch(`https://api.clientify.net/${ver}/notes/`, {
-      method: "POST",
-      headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ deal: dealField, comment: texto })
+    const getRes = await fetch(`https://api.clientify.net/${ver}/deals/${dealId}/`, { headers })
+    let remarksActual = ""
+    if (getRes.ok) {
+      const data = await getRes.json()
+      remarksActual = data?.remarks || data?.deal?.remarks || ""
+    }
+
+    const nuevoRemarks = remarksActual ? `${remarksActual}\n\n${texto}` : texto
+
+    const res = await fetch(`https://api.clientify.net/${ver}/deals/${dealId}/`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ remarks: nuevoRemarks })
     })
 
     console.log(`📝 Nota oportunidad ${dealId} -> Clientify ${ver} status: ${res.status}`)
