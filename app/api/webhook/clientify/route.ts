@@ -3,6 +3,7 @@ import { checkEligibility } from '@/lib/eligibility'
 import { crearNotaClientify } from '@/lib/clientifyNotes'
 import { addFactura } from '@/lib/facturasStore'
 import { enviarFacturaAClientify } from '@/lib/clientifyInvoiceReturn'
+import { getInvoiceByOpportunity, saveInvoice } from '@/lib/invoicesDb'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,7 +98,7 @@ async function getFullContact(apiKey: string, contactInput: any) {
   // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
   for (const ver of ["v2", "v1"]) {
     const url = ver === "v2"
-   ? `https://api.clientify.net/${ver}/contacts/${contactId}/?fields=id,first_name,last_name,name,taxpayer_identification_number,emails,phones,main_address,addresses,company,company_details,company_id`
+  ? `https://api.clientify.net/${ver}/contacts/${contactId}/?fields=id,first_name,last_name,name,taxpayer_identification_number,emails,phones,main_address,addresses,company,company_details,company_id`
       : `https://api.clientify.net/${ver}/contacts/${contactId}/`;
     const res = await fetch(url, {
       headers: { "Authorization": `Token ${apiKey}` }
@@ -121,7 +122,7 @@ async function getFullCompany(apiKey: string, companyInput: any) {
   // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
   for (const ver of ["v2", "v1"]) {
     const url = ver === "v2"
-   ? `https://api.clientify.net/${ver}/companies/${companyId}/?fields=id,name,sector,company_sector,business_name,taxpayer_identification_number,fax,number_of_employees,number_of_employees_desc,owner,owner_name,rank,rank_manual,picture_url,facebook_url,linkedin_url,twitter_url,instagram_url,website,emails,phones,main_address,addresses`
+  ? `https://api.clientify.net/${ver}/companies/${companyId}/?fields=id,name,sector,company_sector,business_name,taxpayer_identification_number,fax,number_of_employees,number_of_employees_desc,owner,owner_name,rank,rank_manual,picture_url,facebook_url,linkedin_url,twitter_url,instagram_url,website,emails,phones,main_address,addresses`
       : `https://api.clientify.net/${ver}/companies/${companyId}/`;
     const res = await fetch(url, {
       headers: { "Authorization": `Token ${apiKey}` }
@@ -483,7 +484,7 @@ export async function POST(req: NextRequest) {
 !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
 !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
           // Faltantes de lib/eligibility.ts (sin productos, importe $0, falta NIT/email)
-   ...eligibility.faltantes,
+  ...eligibility.faltantes,
         ].filter(Boolean) as string[]));
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
@@ -500,11 +501,13 @@ export async function POST(req: NextRequest) {
 
         // --- INICIO FACTURACIÓN + RETORNO A CLIENTIFY ---
         if ((entry as any).listo_para_siigo) {
-          const yaFacturado = (fullDeal.custom_fields || []).some((c: any) =>
+          // PASO 10 - IDEMPOTENCIA POSTGRES: si ya existe en Postgres, no se duplica
+          const yaEnPostgres = await getInvoiceByOpportunity(String(dealId))
+          const yaFacturado =!!yaEnPostgres || (fullDeal.custom_fields || []).some((c: any) =>
             c.field === 'nro_factura_siigo' && c.value
           )
           if (yaFacturado) {
-            console.log(`⏭️ Deal ${dealId} ya tiene nro_factura_siigo, no se duplica`)
+            console.log(`⏭️ Deal ${dealId} ya facturado, no se duplica. Postgres: ${yaEnPostgres?.invoice_id || 'no'} / Clientify: ${yaEnPostgres? 'ya en Postgres' : 'ya tiene nro_factura_siigo'}`)
           } else {
             const facturaMock = {
               id: `MOCK-${Date.now()}`,
@@ -519,6 +522,7 @@ export async function POST(req: NextRequest) {
               cliente_fuente: dataParaSiigo.cliente_fuente,
             }
             addFactura(facturaMock)
+            await saveInvoice(String(dealId), facturaMock.id, facturaMock.total, facturaMock.origen)
             console.log(`✅ Factura MOCK creada: ${facturaMock.id} para deal ${dealId}`)
             const retorno = await enviarFacturaAClientify(apiKey, String(dealId), {
               invoiceId: facturaMock.id,
