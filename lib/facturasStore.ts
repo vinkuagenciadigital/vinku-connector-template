@@ -79,6 +79,3 @@ export function addFactura(f: FacturaSiigo) {
 export function getFacturas() {
   return globalThis.__facturas__!
 }
-export function getFacturas() {
-  return globalThis.__facturas__!
-}
