@@ -11,20 +11,22 @@ export async function enviarFacturaAClientify(
   factura: { invoiceId: string; total: number; fecha: string; origen: string }
 ) {
   // V2: PUT a la oportunidad
-  // Endpoint: https://api.clientify.net/v2/deals/{id}/
-  // En V2 los campos personalizados se mandan como claves directas,
-  // no como array de custom_fields como en V1.
-  const res = await fetch(`https://api.clientify.net/v2/deals/${dealId}/`, {
+  // Endpoint: https://api-plus.clientify.com/v2/deals/{id}/
+  // En V2 los campos personalizados van como array custom_fields
+  // con { field, value }, según doc de /v2/multiple-contacts.
+  const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/`, {
     method: "PUT",
     headers: {
       "Authorization": `Token ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      nro_factura_siigo: factura.invoiceId,
-      siigo_fecha_factura: factura.fecha,
-      siigo_total_facturado: String(factura.total),
-      siigo_origen_factura: factura.origen, // MOCK o REAL
+      custom_fields: [
+        { field: "nro_factura_siigo", value: factura.invoiceId },
+        { field: "siigo_fecha_factura", value: factura.fecha },
+        { field: "siigo_total_facturado", value: String(factura.total) },
+        { field: "siigo_origen_factura", value: factura.origen }, // MOCK o REAL
+      ],
     }),
   });
 
