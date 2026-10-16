@@ -115,7 +115,10 @@ async function getFullCompany(apiKey: string, companyInput: any) {
   console.log(`Buscando empresa ID real: ${companyId}`);
   // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
   for (const ver of ["v2", "v1"]) {
-    const res = await fetch(`https://api.clientify.net/${ver}/companies/${companyId}/`, {
+    const url = ver === "v2"
+     ? `https://api.clientify.net/${ver}/companies/${companyId}/?fields=id,name,sector,company_sector,business_name,taxpayer_identification_number,fax,number_of_employees,number_of_employees_desc,owner,owner_name,rank,rank_manual,picture_url,facebook_url,linkedin_url,twitter_url,instagram_url,website,emails,phones,main_address,addresses`
+      : `https://api.clientify.net/${ver}/companies/${companyId}/`;
+    const res = await fetch(url, {
       headers: { "Authorization": `Token ${apiKey}` }
     });
     if (res.ok) {
@@ -420,7 +423,7 @@ export async function POST(req: NextRequest) {
         // Armamos el objeto que cualquier cliente Siigo necesita para facturar
         const dataParaSiigo = {
           // NIT nativo: CONTACTOS.Número de Identificación Fiscal / EMPRESAS.ID fiscal - FIX V5 agrega más variantes
-          nit: clienteData?.tax_id || clienteData?.nif || clienteData?.id_fiscal || clienteData?.identification || clienteData?.identification_number || clienteData?.document || clienteData?.dni || clienteData?.vat_number || clienteData?.id_number || getCustomValue(clienteData?.custom_fields, "siigo_nit") || getCustomValue(clienteData?.custom_fields, "nif") || getCustomValue(clienteData?.custom_fields, "nit") || null,
+          nit: clienteData?.taxpayer_identification_number || clienteData?.tax_id || clienteData?.nif || clienteData?.id_fiscal || clienteData?.identification || clienteData?.identification_number || clienteData?.document || clienteData?.dni || clienteData?.vat_number || clienteData?.id_number || getCustomValue(clienteData?.custom_fields, "siigo_nit") || getCustomValue(clienteData?.custom_fields, "nif") || getCustomValue(clienteData?.custom_fields, "nit") || null,
           tipo_doc_dian: getCustomValue(clienteData?.custom_fields, "siigo_tipo_doc_dian") || (esEmpresa? "31" : "13"),
           responsable_iva: getCustomValue(clienteData?.custom_fields, "siigo_responsable_iva") || null,
           razon_social: clienteData?.company_name || clienteData?.name || clienteData?.razon_social || entry.contact,
@@ -475,7 +478,7 @@ export async function POST(req: NextRequest) {
 !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
 !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
           // Faltantes de lib/eligibility.ts (sin productos, importe $0, falta NIT/email)
-      ...eligibility.faltantes,
+     ...eligibility.faltantes,
         ].filter(Boolean) as string[]));
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
