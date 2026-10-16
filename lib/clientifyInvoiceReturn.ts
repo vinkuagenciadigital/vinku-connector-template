@@ -15,6 +15,7 @@ export async function enviarFacturaAClientify(
   // Por eso primero hacemos GET para traer los valores actuales del deal.
   let name: string = `Oportunidad ${dealId}`
   let amount: number = factura.total
+  let existingCustomFields: any[] = []
   try {
     const getRes = await fetch(`https://api.clientify.net/v1/deals/${dealId}/`, {
       headers: {
@@ -27,11 +28,25 @@ export async function enviarFacturaAClientify(
       const deal = await getRes.json();
       if (deal.name) name = deal.name;
       if (deal.amount !== undefined && deal.amount !== null) amount = Number(deal.amount);
-      console.log(`🔍 Retorno usará name="${name}" amount=${amount}`);
+      existingCustomFields = deal.custom_fields || [];
+      console.log(`🔍 Retorno usará name="${name}" amount=${amount} custom_fields_existentes=${existingCustomFields.length}`);
     }
   } catch (e: any) {
     console.log(`⚠️ GET V1 falló para retorno deal ${dealId}: ${e.message}, usando fallback name/amount`);
   }
+
+  // PUT reemplaza TODO custom_fields, por eso mezclamos los existentes con los 4 nuevos.
+  // Si no hacemos esto, se borran siigo_forma_pago_dian y siigo_facturar_a.
+  const merged = new Map<string, any>()
+  for (const cf of existingCustomFields) {
+    const key = cf.field || cf.name
+    if (key) merged.set(String(key), { field: String(key), value: cf.value })
+  }
+  merged.set("nro_factura_siigo", { field: "nro_factura_siigo", value: factura.invoiceId })
+  merged.set("siigo_fecha_factura", { field: "siigo_fecha_factura", value: factura.fecha })
+  merged.set("siigo_total_facturado", { field: "siigo_total_facturado", value: String(factura.total) })
+  merged.set("siigo_origen_factura", { field: "siigo_origen_factura", value: factura.origen })
+  const custom_fields = Array.from(merged.values())
 
   // V2: PUT a la oportunidad
   // Endpoint: https://api-plus.clientify.com/v2/deals/{id}/
@@ -46,12 +61,7 @@ export async function enviarFacturaAClientify(
     body: JSON.stringify({
       name,
       amount,
-      custom_fields: [
-        { field: "nro_factura_siigo", value: factura.invoiceId },
-        { field: "siigo_fecha_factura", value: factura.fecha },
-        { field: "siigo_total_facturado", value: String(factura.total) },
-        { field: "siigo_origen_factura", value: factura.origen }, // MOCK o REAL
-      ],
+      custom_fields,
     }),
   });
 
