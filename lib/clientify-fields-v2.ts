@@ -79,11 +79,11 @@ async function listarExistentes(apiKey: string): Promise<Set<string>> {
 
   // Paginación por si el cliente ya tiene muchos campos
   while (url) {
-    const res = await fetch(url, { headers });
+    const res: Response = await fetch(url, { headers });
     if (!res.ok) {
       throw new Error(`Error listando custom-fields v2: ${res.status} ${await res.text()}`);
     }
-    const data = await res.json();
+    const data: any = await res.json();
     for (const c of data.results ?? []) {
       if (c.name) existentes.add(c.name);
     }
@@ -115,13 +115,13 @@ async function crearCampo(
     payload.dropdown_choices = campo.dropdown_choices.map((name) => ({ name }));
   }
 
-  const res = await fetch(`${BASE_V2}/custom-fields/`, {
+  const res: Response = await fetch(`${BASE_V2}/custom-fields/`, {
     method: "POST",
     headers,
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json().catch(() => ({}));
+  const data: any = await res.json().catch(() => ({}));
 
   if (res.status === 201) {
     return { name: campo.name, status: "creado", id: String(data.id ?? "") };
