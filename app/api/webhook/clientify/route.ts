@@ -94,7 +94,10 @@ async function getFullContact(apiKey: string, contactInput: any) {
   console.log(`Buscando contacto ID real: ${contactId}`);
   // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
   for (const ver of ["v2", "v1"]) {
-    const res = await fetch(`https://api.clientify.net/${ver}/contacts/${contactId}/`, {
+    const url = ver === "v2"
+    ? `https://api.clientify.net/${ver}/contacts/${contactId}/?fields=id,first_name,last_name,name,taxpayer_identification_number,emails,phones,main_address,addresses,company,company_details,company_id`
+      : `https://api.clientify.net/${ver}/contacts/${contactId}/`;
+    const res = await fetch(url, {
       headers: { "Authorization": `Token ${apiKey}` }
     });
     if (res.ok) {
@@ -116,7 +119,7 @@ async function getFullCompany(apiKey: string, companyInput: any) {
   // COMPATIBILIDAD V1/V2: intenta V2 primero (trae tax_id), si falla usa V1
   for (const ver of ["v2", "v1"]) {
     const url = ver === "v2"
-     ? `https://api.clientify.net/${ver}/companies/${companyId}/?fields=id,name,sector,company_sector,business_name,taxpayer_identification_number,fax,number_of_employees,number_of_employees_desc,owner,owner_name,rank,rank_manual,picture_url,facebook_url,linkedin_url,twitter_url,instagram_url,website,emails,phones,main_address,addresses`
+    ? `https://api.clientify.net/${ver}/companies/${companyId}/?fields=id,name,sector,company_sector,business_name,taxpayer_identification_number,fax,number_of_employees,number_of_employees_desc,owner,owner_name,rank,rank_manual,picture_url,facebook_url,linkedin_url,twitter_url,instagram_url,website,emails,phones,main_address,addresses`
       : `https://api.clientify.net/${ver}/companies/${companyId}/`;
     const res = await fetch(url, {
       headers: { "Authorization": `Token ${apiKey}` }
@@ -478,7 +481,7 @@ export async function POST(req: NextRequest) {
 !dataParaSiigo.ciudad_dian? "Dirección principal > Ciudad (mapear a DIAN)" : null,
 !dataParaSiigo.sku? "PRODUCTOS.SKU" : null,
           // Faltantes de lib/eligibility.ts (sin productos, importe $0, falta NIT/email)
-     ...eligibility.faltantes,
+    ...eligibility.faltantes,
         ].filter(Boolean) as string[]));
 
         // Bandera final: true si ya tenemos todo para facturar al cliente Siigo
