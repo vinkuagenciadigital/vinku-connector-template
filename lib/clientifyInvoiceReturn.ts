@@ -10,6 +10,25 @@ export async function enviarFacturaAClientify(
   dealId: string,
   factura: { invoiceId: string; total: number; fecha: string; origen: string }
 ) {
+  // V2: PUT exige `name` y `amount` aunque solo queramos actualizar custom_fields.
+  // Sin ellos Clientify responde 400: "Este campo es requerido."
+  // Por eso primero hacemos GET para traer los valores actuales del deal.
+  let name: string | undefined
+  let amount: number | undefined
+  try {
+    const getRes = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/`, {
+      headers: {
+        "Authorization": `Token ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (getRes.ok) {
+      const deal = await getRes.json();
+      name = deal.name;
+      amount = deal.amount ?? deal.amount_user ?? factura.total;
+    }
+  } catch {}
+
   // V2: PUT a la oportunidad
   // Endpoint: https://api-plus.clientify.com/v2/deals/{id}/
   // En V2 los campos personalizados van como array custom_fields
@@ -21,6 +40,8 @@ export async function enviarFacturaAClientify(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      ...(name !== undefined ? { name } : {}),
+      ...(amount !== undefined ? { amount } : {}),
       custom_fields: [
         { field: "nro_factura_siigo", value: factura.invoiceId },
         { field: "siigo_fecha_factura", value: factura.fecha },
