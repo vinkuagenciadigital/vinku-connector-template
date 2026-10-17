@@ -202,5 +202,3 @@ export async function ensureCustomFieldsV2(apiKey: string): Promise<ResultadoCam
   return resultados;
 }
 
-  return resultados;
-}
