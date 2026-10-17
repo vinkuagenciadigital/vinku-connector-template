@@ -11,14 +11,9 @@
 //   5. Guarda las variables de entorno del cliente (CLIENTIFY_API_KEY, CLIENTE_NOMBRE)
 //      en ese proyecto nuevo de Vercel.
 //   6. Lanza el primer deploy en producción.
-//   7. Devuelve a la pantalla la URL del proyecto y el webhook para pegar en Clientify.
-//
-// LO QUE NO HACE:
-//   NO crea los campos personalizados en Clientify.
-//   Esa tarea la hace otro archivo: lib/clientify-fields-v2.ts,
-//   que se usa desde app/api/factory/create-client/route.ts.
-//   Como esta ruta nunca llama a esa función, el proyecto en Vercel se crea
-//   con éxito pero los campos en Clientify quedan sin crear.
+//   7. Crea los campos personalizados en la cuenta de Clientify DEL CLIENTE
+//      usando lib/clientify-fields-v2.ts (9 en Deal, 2 en Contacto, 2 en Empresa).
+//   8. Devuelve a la pantalla la URL del proyecto, el webhook y el resultado de los campos.
 //
 // CÓMO SE USA:
 //   La pantalla app/admin/page.tsx lo llama con:
@@ -26,6 +21,7 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureCustomFieldsV2 } from '@/lib/clientify-fields-v2'
 
 export async function POST(req: NextRequest) {
   try {
@@ -174,14 +170,31 @@ export async function POST(req: NextRequest) {
     // Si el deploy falla, frenamos y mostramos el error de Vercel
     if (!resDeploy.ok) throw new Error(`FALLO DEPLOY: ${JSON.stringify(deployData)}`)
 
-    // 8. Todo salió bien, devolvemos a la pantalla de la Fábrica la URL del proyecto y el webhook
+    // 7.5 CREA LOS CAMPOS EN CLIENTIFY (lo que faltaba)
+    // Usa la API Key DEL CLIENTE que viene del formulario, no la de la Fábrica.
+    // Crea 9 en Deal, 2 en Contacto y 2 en Empresa. Si falla, no frena todo,
+    // solo guarda el error para mostrarlo en la pantalla.
+    let campos = null
+    let camposError = null
+    if (clientifyApiKey) {
+      try {
+        campos = await ensureCustomFieldsV2(clientifyApiKey)
+      } catch (e: any) {
+        camposError = e.message
+        console.error('Error creando campos Clientify:', e)
+      }
+    } else {
+      camposError = 'No se envió clientifyApiKey, no se pudieron crear los campos'
+    }
+
+    // 8. Todo salió bien, devolvemos a la pantalla de la Fábrica la URL del proyecto, el webhook y los campos
     // La pantalla muestra esto con el letrero ✅ CREADO
-    // NOTA IMPORTANTE: aquí NO se crean los campos personalizados en Clientify
-    // Esa lógica está en otro archivo: app/api/factory/create-client/route.ts, que esta ruta nunca llama
     return NextResponse.json({ 
       success: true, 
       url: `https://${cleanSlug}.vercel.app`, 
-      webhookUrl: `https://${cleanSlug}.vercel.app/api/webhook/clientify`, 
+      webhookUrl: `https://${cleanSlug}.vercel.app/api/webhook/clientify`,
+      campos,
+      camposError,
     })
 
   } catch (e:any) {
