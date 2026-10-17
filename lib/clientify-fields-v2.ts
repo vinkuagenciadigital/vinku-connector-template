@@ -24,13 +24,13 @@ const FIELD_TYPE = {
 } as const;
 
 // Campos que necesita el conector Clientify <-> Siigo
-// content_type = "deal" (oportunidad) o "contact" (contacto)
+// content_type = "deal" (oportunidad) o "contact" (contacto) o "company" (empresa)
 type CampoSiigo = {
   name: string;
   field_type: number;
   help_text: string;
   dropdown_choices?: string[];
-  content_type?: "deal" | "contact";
+  content_type?: "deal" | "contact" | "company";
 };
 
 const CAMPOS_SIIGO: CampoSiigo[] = [
@@ -99,6 +99,21 @@ const CAMPOS_SIIGO: CampoSiigo[] = [
     dropdown_choices: ["Responsable de IVA", "No Responsable"],
     content_type: "contact",
   },
+  // --- 2 campos en Empresa (los mismos 2 de Contacto, pero en Empresas) ---
+  {
+    name: "siigo_tipo_doc_dian",
+    field_type: FIELD_TYPE.DROPDOWN,
+    help_text: "Tipo de documento DIAN: 13=CC, 31=NIT, 22=CE, 41=Pasaporte, 47=PEP",
+    dropdown_choices: ["13", "31", "22", "41", "47"],
+    content_type: "company",
+  },
+  {
+    name: "siigo_responsable_iva",
+    field_type: FIELD_TYPE.DROPDOWN,
+    help_text: "Responsabilidad frente al IVA para facturación electrónica DIAN",
+    dropdown_choices: ["Responsable de IVA", "No Responsable"],
+    content_type: "company",
+  },
 ];
 
 export type ResultadoCampo = {
@@ -115,7 +130,7 @@ async function listarExistentes(apiKey: string): Promise<Set<string>> {
   };
 
   const existentes = new Set<string>();
-  for (const content_type of ["deal", "contact"]) {
+  for (const content_type of ["deal", "contact", "company"]) {
     let url: string | null = `${BASE_V2}/custom-fields/?content_type=${content_type}&page_size=200`;
 
     // Paginación por si el cliente ya tiene muchos campos
