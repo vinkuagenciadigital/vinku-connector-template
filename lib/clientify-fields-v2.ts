@@ -34,6 +34,7 @@ type CampoSiigo = {
 };
 
 const CAMPOS_SIIGO: CampoSiigo[] = [
+  // --- 6 campos de SALIDA en Deal (los escribe el conector) ---
   {
     name: "nro_factura_siigo",
     field_type: FIELD_TYPE.TEXT,
@@ -60,7 +61,12 @@ const CAMPOS_SIIGO: CampoSiigo[] = [
     field_type: FIELD_TYPE.DATETIME,
     help_text: "Fecha/hora de facturación en Siigo",
   },
-  // --- 4 campos de entrada en Deal (viejos) ---
+  {
+    name: "siigo_total_facturado",
+    field_type: FIELD_TYPE.CURRENCY,
+    help_text: "Total facturado por Siigo - lo escribe el conector",
+  },
+  // --- 3 campos de ENTRADA en Deal (los lee el conector) ---
   {
     name: "siigo_facturar_a",
     field_type: FIELD_TYPE.DROPDOWN,
@@ -77,11 +83,6 @@ const CAMPOS_SIIGO: CampoSiigo[] = [
     name: "siigo_origen_factura",
     field_type: FIELD_TYPE.TEXT,
     help_text: "Origen de la factura - campo libre por ahora",
-  },
-  {
-    name: "siigo_total_facturado",
-    field_type: FIELD_TYPE.CURRENCY,
-    help_text: "Total a facturar en Siigo",
   },
   // --- 2 campos en Contacto ---
   {
@@ -197,6 +198,9 @@ export async function ensureCustomFieldsV2(apiKey: string): Promise<ResultadoCam
     const r = await crearCampo(apiKey, campo);
     resultados.push(r);
   }
+
+  return resultados;
+}
 
   return resultados;
 }
