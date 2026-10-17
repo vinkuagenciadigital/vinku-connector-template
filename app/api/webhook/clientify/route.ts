@@ -326,7 +326,10 @@ export async function POST(req: NextRequest) {
         const formaPagoDian_raw = getCustomValue(fullDeal.custom_fields, "siigo_forma_pago_dian") || null;
         const formaPagoDian = formaPagoDian_raw || "1";
 
-        console.log(`🧾 Decisión facturación: siigo_facturar_a=${facturarA || 'no definido'} | tieneEmpresa=${!!companyData} tieneContacto=${!!contactData} | formaPago=${formaPagoDian_raw || 'no definido'}`);
+        // CAMBIO: siigo_origen_factura es campo de ENTRADA en Deal, se lee aquí (opcional, libre)
+        const origenFactura = getCustomValue(fullDeal.custom_fields, "siigo_origen_factura") || null;
+
+        console.log(`🧾 Decisión facturación: siigo_facturar_a=${facturarA || 'no definido'} | tieneEmpresa=${!!companyData} tieneContacto=${!!contactData} | formaPago=${formaPagoDian_raw || 'no definido'} | origen=${origenFactura || 'no definido'}`);
 
         let clienteData: any = null
         let esEmpresa = false
@@ -450,6 +453,7 @@ export async function POST(req: NextRequest) {
           forma_pago_dian_raw: formaPagoDian_raw,
           facturar_a_raw: facturarA_raw,
           decision_facturacion: facturarA || "auto",
+          origen_factura: origenFactura,
           // Debug
           productos_completos: productosEnriquecidos || [], // FIX PRODUCTO NOMBRE - ahora con nombre incluido + FIX MULTI-PRODUCTO todos
           custom_fields_encontrados: fullDeal.custom_fields || [],
@@ -503,9 +507,8 @@ export async function POST(req: NextRequest) {
         if ((entry as any).listo_para_siigo) {
           // PASO 10 - IDEMPOTENCIA POSTGRES: si ya existe en Postgres, no se duplica
           const yaEnPostgres = await getInvoiceByOpportunity(String(dealId))
-          const yaFacturado =!!yaEnPostgres || (fullDeal.custom_fields || []).some((c: any) =>
-            c.field === 'nro_factura_siigo' && c.value
-          )
+          // FIX: usar getCustomValue para detectar nro_factura_siigo (soporta field y name)
+          const yaFacturado =!!yaEnPostgres || !!getCustomValue(fullDeal.custom_fields, 'nro_factura_siigo')
           if (yaFacturado) {
             console.log(`⏭️ Deal ${dealId} ya facturado, no se duplica. Postgres: ${yaEnPostgres?.invoice_id || 'no'} / Clientify: ${yaEnPostgres? 'ya en Postgres' : 'ya tiene nro_factura_siigo'}`)
           } else {
@@ -524,6 +527,9 @@ export async function POST(req: NextRequest) {
             addFactura(facturaMock)
             await saveInvoice(String(dealId), facturaMock.id, facturaMock.total, facturaMock.origen)
             console.log(`✅ Factura MOCK creada: ${facturaMock.id} para deal ${dealId}`)
+            // NOTA: enviarFacturaAClientify es quien escribe los 6 campos de salida en el deal:
+            // nro_factura_siigo, estado_facturacion_siigo, error_facturacion_siigo,
+            // siigo_invoice_id, fecha_facturacion_siigo, siigo_total_facturado (= totalOportunidad, importe del deal)
             const retorno = await enviarFacturaAClientify(apiKey, String(dealId), {
               invoiceId: facturaMock.id,
               total: facturaMock.total,
