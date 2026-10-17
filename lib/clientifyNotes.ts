@@ -59,7 +59,7 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
-  const body = { comments: texto }
+  const body = { object_id: Number(dealId), comments: texto }
   const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/`, {
     method: "POST",
     headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
