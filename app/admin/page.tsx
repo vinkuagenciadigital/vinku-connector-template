@@ -133,23 +133,25 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
-                {/* Si la creación de campos en Clientify falló, muestra el error en rojo.
-                    El proyecto en Vercel sí se creó, pero los campos no, por eso se avisa aparte. */}
-                {resultado.camposError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                    <p className="text-xs font-bold text-red-600">⚠️ Los campos fallaron:</p>
-                    <p className="text-xs text-red-600 break-words">{resultado.camposError}</p>
-                    <p className="text-xs text-red-500 mt-1">El proyecto en Vercel sí se creó, pero revisa la API Key de Clientify.</p>
-                  </div>
-                )}
-
-                {/* Si los campos sí se crearon, muestra el resultado que devuelve lib/clientify-fields-v2.ts
-                    Sirve para confirmar que los campos personalizados ya existen en la cuenta del cliente. */}
-                {resultado.campos && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <p className="text-xs font-bold text-green-700 mb-2">🧩 Campos en Clientify:</p>
-                    <pre className="text-xs text-black/70 whitespace-pre-wrap break-words">{JSON.stringify(resultado.campos, null, 2)}</pre>
-                  </div>
+                {/* Estado de los campos en Clientify: solo un mensaje simple, sin JSON.
+                    Si alguno falló o hubo camposError, muestra en rojo.
+                    Si todos se crearon o ya existían, muestra en verde. */}
+                {(resultado.campos || resultado.camposError) && (
+                  (() => {
+                    const hayError = !!resultado.camposError || (Array.isArray(resultado.campos) && resultado.campos.some((c: any) => c.status === "error"));
+                    if (hayError) {
+                      return (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                          <p className="text-xs font-bold text-red-600">🔴 Error en la conexión, falla en los campos</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                        <p className="text-xs font-bold text-green-700">🟢 Conexión exitosa</p>
+                      </div>
+                    );
+                  })()
                 )}
 
                 {/* Link para abrir el panel del cliente recién creado */}
