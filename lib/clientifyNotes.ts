@@ -59,21 +59,20 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
-  const body = { object_id: Number(dealId), comments: texto }
-  const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/`, {
+  const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/note/`, {
     method: "POST",
     headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ comment: texto })
   })
 
-  console.log(`📝 Wallentry oportunidad ${dealId} status: ${res.status} body: ${JSON.stringify(body).substring(0, 120)}`)
+  console.log(`📝 Nota en muro oportunidad ${dealId} status: ${res.status}`)
 
-  if (res.status === 201 || res.ok) {
-    console.log(`✅ Nota creada en timeline de oportunidad ${dealId} vía wallentries`)
+  if (res.ok) {
+    console.log(`✅ Nota creada en muro de oportunidad ${dealId} vía note`)
     return
   }
 
-  console.log(`⚠️ Wallentry no creado: ${res.status} - ${(await res.text()).substring(0, 500)}`)
+  console.log(`⚠️ Nota en muro no creada: ${res.status} - ${(await res.text()).substring(0, 500)}`)
 
   for (const ver of ["v2", "v1"]) {
     const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
