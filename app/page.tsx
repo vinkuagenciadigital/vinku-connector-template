@@ -58,42 +58,6 @@ const webhookUrl = `https://${vercelUrl}/api/webhook/clientify`
           </div>
         </div>
 
-        {/* CAMPOS PERSONALIZADOS - SIN SECCIÓN V1 */}
-        <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
-          <h2 className="font-semibold mb-1 text-black">2. Campos personalizados que debes crear en Clientify</h2>
-          <p className="text-sm text-black/60 mb-5">Crea estos campos con el nombre exacto (minúsculas). Clientify &gt; Contactos &gt; Campos personalizados. Con botón de copiar.</p>
-
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-[#8A6FE8] mb-2">📇 Contactos y Empresas - Obligatorios DIAN</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3 border border-[#8A6FE8]/15 rounded-xl p-3 bg-[#F8F7FF]">
-                  <div className="flex-1"><p className="text-sm font-mono font-bold text-black">siigo_tipo_doc_dian <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full ml-2">OBLIGATORIO</span></p><p className="text-xs text-black/70">Tipo Documento DIAN • Lista: 13=CC, 31=NIT, 22=Extranjería</p><p className="text-[11px] text-black/40">Dónde: Contactos y Empresas</p></div>
-                  <CopyButton text="siigo_tipo_doc_dian" />
-                </div>
-                <div className="flex items-center justify-between gap-3 border border-[#8A6FE8]/15 rounded-xl p-3 bg-[#F8F7FF]">
-                  <div className="flex-1"><p className="text-sm font-mono font-bold text-black">siigo_responsable_iva <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full ml-2">OBLIGATORIO</span></p><p className="text-xs text-black/70">Responsable IVA • Lista: 48=No responsable, 49=Responsable</p><p className="text-[11px] text-black/40">Dónde: Contactos y Empresas</p></div>
-                  <CopyButton text="siigo_responsable_iva" />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-[#8A6FE8] mb-2">💼 Oportunidades</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3 border border-[#8A6FE8]/15 rounded-xl p-3 bg-white">
-                  <div className="flex-1"><p className="text-sm font-mono font-bold text-black">siigo_facturar_a <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-2">OPCIONAL</span></p><p className="text-xs text-black/70">¿Facturar a quién? • Lista: PERSONA / EMPRESA</p><p className="text-[11px] text-black/40">Dónde: Oportunidades</p></div>
-                  <CopyButton text="siigo_facturar_a" />
-                </div>
-                <div className="flex items-center justify-between gap-3 border border-[#8A6FE8]/15 rounded-xl p-3 bg-white">
-                  <div className="flex-1"><p className="text-sm font-mono font-bold text-black">siigo_forma_pago_dian <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-2">OPCIONAL</span></p><p className="text-xs text-black/70">Forma de Pago DIAN • Lista: 1=Contado, 2=Crédito</p><p className="text-[11px] text-black/40">Dónde: Oportunidades</p></div>
-                  <CopyButton text="siigo_forma_pago_dian" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* PANEL DE EVENTOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-[#8A6FE8]/20 rounded-2xl p-5 shadow-sm">
