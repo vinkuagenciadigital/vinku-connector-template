@@ -59,20 +59,53 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
+  const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
+
   const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/note/`, {
     method: "POST",
-    headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ comment: texto })
   })
 
   console.log(`📝 Nota en muro oportunidad ${dealId} status: ${res.status}`)
 
-  if (res.ok) {
+  if (!res.ok) {
+    console.log(`⚠️ Nota en muro no creada: ${res.status} - ${(await res.text()).substring(0, 500)}`)
+  } else {
     console.log(`✅ Nota creada en muro de oportunidad ${dealId} vía note`)
-    return
-  }
 
-  console.log(`⚠️ Nota en muro no creada: ${res.status} - ${(await res.text()).substring(0, 500)}`)
+    // Fijar arriba: NoteRequest no tiene campo para fijar, hay que
+    // buscar la entrada del muro recién creada y ponerle pay_attention: true
+    try {
+      const wallRes = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/?fields=id,comments,pay_attention`, { headers })
+      if (wallRes.ok) {
+        const wallData = await wallRes.json()
+        const entries = wallData?.results || wallData || []
+        const entry = [...entries].reverse().find((e: any) => typeof e?.comments === "string" && e.comments.includes("No se pudo generar factura en Siigo"))
+        if (entry?.id) {
+          const pinRes = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/${entry.id}/`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({ pay_attention: true })
+          })
+          console.log(`📌 Fijar nota ${entry.id} en oportunidad ${dealId} status: ${pinRes.status}`)
+          if (pinRes.ok) {
+            console.log(`✅ Nota fijada arriba en oportunidad ${dealId}`)
+            return
+          }
+          console.log(`⚠️ No se pudo fijar la nota: ${pinRes.status} - ${(await pinRes.text()).substring(0, 500)}`)
+          return
+        }
+        console.log(`⚠️ No se encontró la entrada del muro para fijar en ${dealId}`)
+        return
+      }
+      console.log(`⚠️ No se pudo listar wallentries para fijar en ${dealId}: ${wallRes.status}`)
+      return
+    } catch (e) {
+      console.log(`⚠️ Error fijando nota en ${dealId}: ${e}`)
+      return
+    }
+  }
 
   for (const ver of ["v2", "v1"]) {
     const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
