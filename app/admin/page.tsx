@@ -124,9 +124,9 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
-                {/* Webhook que el admin debe pegar en Clientify para que Clientify avise al conector */}
+               {/* Webhook que el admin debe pegar en Clientify para que Clientify avise al conector */}
                 <div>
-                  <p className="text-xs text-black/60 mb-1">Webhook para pegar en Clientify</p>
+                  <p className="text-xs text-black/60 mb-1">Webhook para pegar en Clientify en Ajustes &gt; Integraciones &gt; Integradores &gt; Webhooks &gt; Editar &gt; Webhook de oportunidad</p>
                   <div className="flex gap-2 items-center">
                     <code className="flex-1 bg-[#EDEBFE] p-3 rounded-lg text-sm break-all border border-[#8A6FE8]/30 text-black font-bold">{resultado.webhookUrl}</code>
                     <CopyButton text={resultado.webhookUrl} />
