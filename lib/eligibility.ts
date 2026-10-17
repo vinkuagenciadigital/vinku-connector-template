@@ -97,17 +97,28 @@ export function checkEligibility(opp: Opportunity): Eligibility {
   // BLOQUE 4: CUÁNTO SE COBRA - EL IMPORTE
   // ---------------------------------------------------------------
   // Qué hace:
-  // Suma precio * cantidad de cada producto para obtener el total
-  // real. No confiamos solo en opp.amount porque a veces Clientify
-  // trae amount = 0 aunque haya productos, o viceversa.
-  // Por qué bloquea en $0:
-  // Facturar $0 en Siigo genera una factura inválida ante la DIAN
-  // y contamina los reportes. Mejor bloquear y avisar.
-  // Nota: Si ya marcamos "Sin productos", este bloque NO vuelve a
-  // marcar "Importe es $0" para no duplicar el mismo problema.
+  // Valida DOS importes, no solo uno, porque antes solo se validaba
+  // la suma de productos y se colaba el caso que vimos en Vinku:
+  // productos con precio > 0 pero opp.amount = 0 -> la función
+  // decía apta = true y route.ts facturaba en $0 en Siigo.
+  // Regla nueva, sin excepciones:
+  // - Si opp.amount <= 0 -> NO apta. Es el total que Siigo va a
+  //   facturar. Si es 0, no se factura.
+  // - Si la suma de productos <= 0 -> NO apta. No hay nada que cobrar.
+  // Los dos tienen que ser > 0 para que sea apta.
+  // Nota: Si ya marcamos "Sin productos", no volvemos a marcar
+  // "Importe es $0" por la suma para no duplicar el mismo problema.
   // ---------------------------------------------------------------
-  const importe = opp.products?.reduce((s, p) => s + p.price * p.quantity, 0) || 0
-  if (importe <= 0 && opp.products && opp.products.length > 0) faltantes.push("Importe es $0")
+  const amount = Number.isFinite(opp.amount) ? opp.amount : 0
+  if (amount <= 0) faltantes.push("Importe de la oportunidad es $0")
+
+  const importeProductos = opp.products?.reduce((s, p) => s + p.price * p.quantity, 0) || 0
+  if (importeProductos <= 0 && opp.products && opp.products.length > 0 && amount > 0) faltantes.push("Importe es $0")
+
+  // Importe que muestra el panel: si alguno de los dos es 0, el
+  // importe efectivo es 0, para que el panel no muestre $240 cuando
+  // la oportunidad en realidad va a facturar $0.
+  const importe = amount > 0 && importeProductos > 0 ? importeProductos : 0
 
   // ---------------------------------------------------------------
   // BLOQUE 5: DECISIÓN FINAL
@@ -141,15 +152,23 @@ export function toOpportunity(
   dataParaSiigo: any,
   productosEnriquecidos: any[]
 ): Opportunity {
+  const toNumber = (v: any): number => {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : 0
+  }
+
   return {
     id: String(fullDeal.id || fullDeal.deal_id || ""),
     name: fullDeal.name || fullDeal.title || "",
     status: String(fullDeal.status || "won"),
-    amount: Number(dataParaSiigo?.precio_total_oportunidad || fullDeal.amount || 0),
+    // OJO: Se usa ?? y no || para no comerse el 0.
+    // Con ||, un precio_total_oportunidad = 0 saltaba a fullDeal.amount
+    // y enmascaraba el 0 real. Con ??, solo salta si es null/undefined.
+    amount: toNumber(dataParaSiigo?.precio_total_oportunidad ?? fullDeal.amount ?? 0),
     products: (productosEnriquecidos || []).map((p: any) => ({
       name: p.name || p.product_name || "Producto",
-      price: Number(p.price || p.unit_price || 0),
-      quantity: Number(p.quantity || 1),
+      price: toNumber(p.price ?? p.unit_price ?? 0),
+      quantity: toNumber(p.quantity ?? 1),
     })),
     contact: {
       id: String(dataParaSiigo?.contact_id || fullDeal.contact_id || ""),
