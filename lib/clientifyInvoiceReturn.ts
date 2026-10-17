@@ -35,17 +35,20 @@ export async function enviarFacturaAClientify(
     console.log(`⚠️ GET V1 falló para retorno deal ${dealId}: ${e.message}, usando fallback name/amount`);
   }
 
-  // PUT reemplaza TODO custom_fields, por eso mezclamos los existentes con los 4 nuevos.
+  // PUT reemplaza TODO custom_fields, por eso mezclamos los existentes con los 6 de salida.
   // Si no hacemos esto, se borran siigo_forma_pago_dian y siigo_facturar_a.
+  // NOTA: siigo_origen_factura es de ENTRADA, no se toca, se preserva desde existingCustomFields.
   const merged = new Map<string, any>()
   for (const cf of existingCustomFields) {
     const key = cf.field || cf.name
     if (key) merged.set(String(key), { field: String(key), value: cf.value })
   }
   merged.set("nro_factura_siigo", { field: "nro_factura_siigo", value: factura.invoiceId })
-  merged.set("siigo_fecha_factura", { field: "siigo_fecha_factura", value: factura.fecha })
-  merged.set("siigo_total_facturado", { field: "siigo_total_facturado", value: String(factura.total) })
-  merged.set("siigo_origen_factura", { field: "siigo_origen_factura", value: factura.origen })
+  merged.set("estado_facturacion_siigo", { field: "estado_facturacion_siigo", value: "FACTURADO" })
+  merged.set("error_facturacion_siigo", { field: "error_facturacion_siigo", value: "" })
+  merged.set("siigo_invoice_id", { field: "siigo_invoice_id", value: factura.invoiceId })
+  merged.set("fecha_facturacion_siigo", { field: "fecha_facturacion_siigo", value: factura.fecha })
+  merged.set("siigo_total_facturado", { field: "siigo_total_facturado", value: factura.total })
   const custom_fields = Array.from(merged.values())
 
   // V2: PUT a la oportunidad
