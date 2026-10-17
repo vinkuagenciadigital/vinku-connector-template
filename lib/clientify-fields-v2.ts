@@ -24,12 +24,13 @@ const FIELD_TYPE = {
 } as const;
 
 // Campos que necesita el conector Clientify <-> Siigo
-// content_type = "deal" (oportunidad)
+// content_type = "deal" (oportunidad) o "contact" (contacto)
 type CampoSiigo = {
   name: string;
   field_type: number;
   help_text: string;
   dropdown_choices?: string[];
+  content_type?: "deal" | "contact";
 };
 
 const CAMPOS_SIIGO: CampoSiigo[] = [
@@ -59,6 +60,44 @@ const CAMPOS_SIIGO: CampoSiigo[] = [
     field_type: FIELD_TYPE.DATETIME,
     help_text: "Fecha/hora de facturación en Siigo",
   },
+  // --- 4 campos de entrada en Deal (viejos) ---
+  {
+    name: "siigo_facturar_a",
+    field_type: FIELD_TYPE.DROPDOWN,
+    help_text: "A quién se le factura",
+    dropdown_choices: ["PERSONA", "EMPRESA"],
+  },
+  {
+    name: "siigo_forma_pago_dian",
+    field_type: FIELD_TYPE.DROPDOWN,
+    help_text: "Forma de pago DIAN: 1=Contado, 2=Crédito",
+    dropdown_choices: ["1", "2"],
+  },
+  {
+    name: "siigo_origen_factura",
+    field_type: FIELD_TYPE.TEXT,
+    help_text: "Origen de la factura - campo libre por ahora",
+  },
+  {
+    name: "siigo_total_facturado",
+    field_type: FIELD_TYPE.CURRENCY,
+    help_text: "Total a facturar en Siigo",
+  },
+  // --- 2 campos en Contacto ---
+  {
+    name: "siigo_tipo_doc_dian",
+    field_type: FIELD_TYPE.DROPDOWN,
+    help_text: "Tipo de documento DIAN: 13=CC, 31=NIT, 22=CE, 41=Pasaporte, 47=PEP",
+    dropdown_choices: ["13", "31", "22", "41", "47"],
+    content_type: "contact",
+  },
+  {
+    name: "siigo_responsable_iva",
+    field_type: FIELD_TYPE.DROPDOWN,
+    help_text: "Responsabilidad frente al IVA para facturación electrónica DIAN",
+    dropdown_choices: ["Responsable de IVA", "No Responsable"],
+    content_type: "contact",
+  },
 ];
 
 export type ResultadoCampo = {
@@ -75,19 +114,21 @@ async function listarExistentes(apiKey: string): Promise<Set<string>> {
   };
 
   const existentes = new Set<string>();
-  let url: string | null = `${BASE_V2}/custom-fields/?content_type=deal&page_size=200`;
+  for (const content_type of ["deal", "contact"]) {
+    let url: string | null = `${BASE_V2}/custom-fields/?content_type=${content_type}&page_size=200`;
 
-  // Paginación por si el cliente ya tiene muchos campos
-  while (url) {
-    const res: Response = await fetch(url, { headers });
-    if (!res.ok) {
-      throw new Error(`Error listando custom-fields v2: ${res.status} ${await res.text()}`);
+    // Paginación por si el cliente ya tiene muchos campos
+    while (url) {
+      const res: Response = await fetch(url, { headers });
+      if (!res.ok) {
+        throw new Error(`Error listando custom-fields v2: ${res.status} ${await res.text()}`);
+      }
+      const data: any = await res.json();
+      for (const c of data.results ?? []) {
+        if (c.name) existentes.add(`${content_type}:${c.name}`);
+      }
+      url = data.next;
     }
-    const data: any = await res.json();
-    for (const c of data.results ?? []) {
-      if (c.name) existentes.add(c.name);
-    }
-    url = data.next;
   }
 
   return existentes;
@@ -102,8 +143,10 @@ async function crearCampo(
     "Content-Type": "application/json",
   };
 
+  const content_type = campo.content_type ?? "deal";
+
   const payload: Record<string, unknown> = {
-    content_type: "deal",
+    content_type,
     name: campo.name,
     field_type: campo.field_type,
     help_text: campo.help_text,
@@ -146,7 +189,8 @@ export async function ensureCustomFieldsV2(apiKey: string): Promise<ResultadoCam
   const resultados: ResultadoCampo[] = [];
 
   for (const campo of CAMPOS_SIIGO) {
-    if (existentes.has(campo.name)) {
+    const content_type = campo.content_type ?? "deal";
+    if (existentes.has(`${content_type}:${campo.name}`)) {
       resultados.push({ name: campo.name, status: "ya_existia" });
       continue;
     }
