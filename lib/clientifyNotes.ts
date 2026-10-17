@@ -105,5 +105,3 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
 
   console.log(`❌ Nota no creada en V2 ni V1 para oportunidad ${dealId}`)
 }
-  console.log(`❌ Nota no creada en V2 ni V1 para oportunidad ${dealId}`)
-}
