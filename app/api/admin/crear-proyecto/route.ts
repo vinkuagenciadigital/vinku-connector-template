@@ -1,32 +1,78 @@
+// ============================================================================
+// PARA QUÉ SIRVE:
+//   Es el endpoint que usa el botón "CREAR PROYECTO CLIENTE" de la Fábrica.
+//   Cuando creas un cliente nuevo desde la pantalla de Admin, esta ruta hace
+//   todo el trabajo pesado:
+//
+//   1. Recibe nombre, slug y keys del cliente desde el formulario.
+//   2. Limpia y normaliza el slug y corrige el typo "siig" -> "siigo".
+//   3. Crea un proyecto nuevo en Vercel conectado al repo plantilla del conector.
+//   4. Corrige el dominio para que quede con "siigo" y no con "siig".
+//   5. Guarda las variables de entorno del cliente (CLIENTIFY_API_KEY, CLIENTE_NOMBRE)
+//      en ese proyecto nuevo de Vercel.
+//   6. Lanza el primer deploy en producción.
+//   7. Devuelve a la pantalla la URL del proyecto y el webhook para pegar en Clientify.
+//
+// LO QUE NO HACE:
+//   NO crea los campos personalizados en Clientify.
+//   Esa tarea la hace otro archivo: lib/clientify-fields-v2.ts,
+//   que se usa desde app/api/factory/create-client/route.ts.
+//   Como esta ruta nunca llama a esa función, el proyecto en Vercel se crea
+//   con éxito pero los campos en Clientify quedan sin crear.
+//
+// CÓMO SE USA:
+//   La pantalla app/admin/page.tsx lo llama con:
+//   fetch('/api/admin/crear-proyecto', { method: 'POST', body: JSON.stringify(form) })
+// ============================================================================
+
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
+    // Recibimos los datos que el usuario escribió en el formulario de la Fábrica
+    // nombreCliente: nombre bonito para mostrar, slug: nombre para la URL, y las keys del cliente
     const { nombreCliente, slug, clientifyApiKey, siigoUser, siigoAccessKey } = await req.json()
+
+    // Si no viene slug no podemos crear el proyecto, frenamos aquí
     if (!slug) return NextResponse.json({ error: 'Falta slug' }, { status: 400 })
 
+    // Variables de entorno de la Fábrica, configuradas en Vercel
+    // VERCEL_TOKEN: permiso para crear proyectos vía API de Vercel
+    // TEMPLATE_GITHUB_REPO: repo plantilla del conector, ej: usuario/vinku-connector-template
+    // TEAM_ID: equipo de Vercel, si está vacío usa la cuenta personal
     const VERCEL_TOKEN = process.env.VERCEL_TOKEN!
     const TEMPLATE_REPO = process.env.TEMPLATE_GITHUB_REPO!
     const TEAM_ID = process.env.VERCEL_TEAM_ID || ''
     
-    // 1. Normaliza
+    // 1. Normaliza el slug para que sea una URL válida
+    // Lo pasa a minúsculas, quita caracteres raros, deja solo letras, números y guiones
+    // También quita guiones dobles y guiones al inicio o al final
     let baseSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-').replace(/^-|-$/g, '')
 
     // 2. FIX SIIGO: Corrige si viene sin la o y evita duplicar el sufijo
+    // Si el usuario escribió "siig" por error, lo corrige a "siigo"
     baseSlug = baseSlug.replace(/siig$/i, 'siigo') // si termina en siig -> siigo
     baseSlug = baseSlug.replace(/conexion-clientify-siig$/i, 'conexion-clientify-siigo')
 
+    // Si el slug todavía no tiene el sufijo completo, se lo agrega
+    // Ej: "acme" -> "acme-conexion-clientify-siigo"
     let cleanSlug = baseSlug
     if (!cleanSlug.includes('conexion-clientify-siigo')) {
       cleanSlug = `${cleanSlug}-conexion-clientify-siigo`
     }
     // Garantía final: si por cualquier cosa aún termina en siig, lo corrige
     cleanSlug = cleanSlug.replace(/-siig$/i, '-siigo')
+    // Vercel permite máximo 100 caracteres en el nombre, lo recortamos a 96 para dejar margen
     cleanSlug = cleanSlug.slice(0, 96) // Vercel max 100, dejamos margen
 
+    // Prepara los parámetros de equipo para las llamadas a la API de Vercel
+    // teamQuery: para la mayoría de llamadas
+    // teamQueryDeploy: para el deploy, con forceNew=1 para forzar un deploy nuevo
     const teamQuery = TEAM_ID ? `?teamId=${TEAM_ID}` : ''
     const teamQueryDeploy = TEAM_ID ? `?forceNew=1&teamId=${TEAM_ID}` : '?forceNew=1'
 
+    // 3. Crea el proyecto en Vercel conectado al repo plantilla de GitHub
+    // Esto es lo que hace que aparezca un proyecto nuevo en tu dashboard de Vercel
     const resProject = await fetch(`https://api.vercel.com/v10/projects${teamQuery}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
@@ -37,13 +83,16 @@ export async function POST(req: NextRequest) {
       }),
     })
     let projectData = await resProject.json()
+    // Si Vercel responde con error, frenamos y mostramos el error
     if (!resProject.ok) throw new Error(JSON.stringify(projectData))
 
     // --- INICIO FIX DOMINIO SIIGO (agregado) ---
+    // Vercel a veces crea el dominio con el typo "siig", aquí lo corregimos
     const dominioBueno = `${cleanSlug}.vercel.app`
     const dominioMalo = `${cleanSlug.replace(/siigo$/i, 'siig')}.vercel.app`
     
     // Asegura que el dominio bueno exista
+    // El .catch(()=>{}) es para que no frene todo si ya existe
     await fetch(`https://api.vercel.com/v9/projects/${projectData.id}/domains${teamQuery}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
@@ -51,6 +100,7 @@ export async function POST(req: NextRequest) {
     }).catch(()=>{})
 
     // Borra el dominio malo si Vercel lo creó
+    // Así el cliente solo queda con la URL correcta terminada en siigo
     if (dominioMalo !== dominioBueno) {
       await fetch(`https://api.vercel.com/v9/projects/${projectData.id}/domains/${dominioMalo}${teamQuery}`, {
         method: 'DELETE',
@@ -59,6 +109,9 @@ export async function POST(req: NextRequest) {
     }
     // --- FIN FIX DOMINIO SIIGO ---
 
+    // 4. Consigue el repoId del repo de GitHub conectado
+    // Lo necesitamos después para decirle a Vercel desde qué repo desplegar
+    // A veces Vercel no lo devuelve de inmediato, por eso esperamos 2 segundos y volvemos a preguntar
     let repoId = projectData?.link?.repoId
     if (!repoId) {
       await new Promise(r => setTimeout(r, 2000))
@@ -69,13 +122,21 @@ export async function POST(req: NextRequest) {
       repoId = projectFull?.link?.repoId
       projectData = projectFull
     }
+    // Si después de reintentar sigue sin repoId, no podemos seguir
     if (!repoId) throw new Error(`No se pudo obtener repoId`)
 
+    // 5. Prepara las variables de entorno que va a tener el proyecto del cliente
+    // Son las keys propias de ese cliente, no las de la Fábrica
+    // NOTA: aquí solo se guardan CLIENTIFY_API_KEY y CLIENTE_NOMBRE
+    // siigoUser y siigoAccessKey se reciben del formulario pero NO se guardan en este código
     const envs = [
         { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey?.toString().trim() },
         { key: 'CLIENTE_NOMBRE', value: nombreCliente?.toString().trim() },
     ]
 
+    // 6. Guarda cada variable de entorno en Vercel, una por una
+    // type 'sensitive' = secreta, no se muestra en el dashboard. 'plain' = visible
+    // target: se aplica a production, preview y development
     for (const env of envs) {
       if(!env.value) continue
       const isSecret = env.key.includes('API_KEY') || env.key.includes('ACCESS') || env.key.includes('USER')
@@ -89,11 +150,15 @@ export async function POST(req: NextRequest) {
           target: ['production','preview','development'] 
         }),
       })
+      // Pausa de 800ms entre cada variable para no saturar la API de Vercel
       await new Promise(r => setTimeout(r, 800))
     }
 
+    // Espera 2.5 segundos para que Vercel termine de guardar las variables antes de desplegar
     await new Promise(r => setTimeout(r, 2500))
 
+    // 7. Lanza el primer deploy en producción del proyecto del cliente
+    // Le dice a Vercel: despliega este proyecto, desde este repo, rama main
     const resDeploy = await fetch(`https://api.vercel.com/v13/deployments${teamQueryDeploy}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
@@ -106,8 +171,13 @@ export async function POST(req: NextRequest) {
     })
     
     const deployData = await resDeploy.json()
+    // Si el deploy falla, frenamos y mostramos el error de Vercel
     if (!resDeploy.ok) throw new Error(`FALLO DEPLOY: ${JSON.stringify(deployData)}`)
 
+    // 8. Todo salió bien, devolvemos a la pantalla de la Fábrica la URL del proyecto y el webhook
+    // La pantalla muestra esto con el letrero ✅ CREADO
+    // NOTA IMPORTANTE: aquí NO se crean los campos personalizados en Clientify
+    // Esa lógica está en otro archivo: app/api/factory/create-client/route.ts, que esta ruta nunca llama
     return NextResponse.json({ 
       success: true, 
       url: `https://${cleanSlug}.vercel.app`, 
@@ -115,6 +185,8 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (e:any) {
+    // Si algo falló en cualquier paso anterior, devuelve el error a la pantalla
+    // La pantalla lo muestra en rojo
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
