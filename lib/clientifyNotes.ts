@@ -59,8 +59,8 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
-  const body = { deal: Number(dealId), content: texto, type: "note" }
-  const res = await fetch(`https://api.clientify.net/v2/wallentries/`, {
+  const body = { comments: texto }
+  const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/`, {
     method: "POST",
     headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify(body)
@@ -78,7 +78,7 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   for (const ver of ["v2", "v1"]) {
     const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
 
-    const getRes = await fetch(`https://api.clientify.net/${ver}/deals/${dealId}/`, { headers })
+    const getRes = await fetch(`https://api-plus.clientify.com/${ver}/deals/${dealId}/`, { headers })
     let remarksActual = ""
     if (getRes.ok) {
       const data = await getRes.json()
@@ -87,7 +87,7 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
 
     const nuevoRemarks = remarksActual ? `${remarksActual}\n\n${texto}` : texto
 
-    const res = await fetch(`https://api.clientify.net/${ver}/deals/${dealId}/`, {
+    const res = await fetch(`https://api-plus.clientify.com/${ver}/deals/${dealId}/`, {
       method: "PATCH",
       headers,
       body: JSON.stringify({ remarks: nuevoRemarks })
