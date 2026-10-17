@@ -59,27 +59,21 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
   // Nota: Si Clientify devuelve error en ambas, route.ts lo captura
   // con try/catch y el webhook sigue respondiendo 200.
   // ---------------------------------------------------------------
-  for (const body of [
-    { object_id: Number(dealId), title: "Vinku - No se pudo generar factura en Siigo", content: texto, type: "note" },
-    { object_id: dealId, title: "Vinku - No se pudo generar factura en Siigo", content: texto },
-    { object_id: Number(dealId), comment: texto },
-    { object_id: Number(dealId), content: texto },
-  ]) {
-    const res = await fetch(`https://api-plus.clientify.com/v2/deals/${dealId}/wallentries/`, {
-      method: "POST",
-      headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    })
+  const body = { deal: Number(dealId), content: texto, type: "note" }
+  const res = await fetch(`https://api.clientify.net/v2/wallentries/`, {
+    method: "POST",
+    headers: { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  })
 
-    console.log(`📝 Wallentry oportunidad ${dealId} status: ${res.status} body: ${JSON.stringify(body).substring(0, 120)}`)
+  console.log(`📝 Wallentry oportunidad ${dealId} status: ${res.status} body: ${JSON.stringify(body).substring(0, 120)}`)
 
-    if (res.status === 201 || res.ok) {
-      console.log(`✅ Nota creada en timeline de oportunidad ${dealId} vía wallentries`)
-      return
-    }
-
-    console.log(`⚠️ Wallentry no creado: ${res.status} - ${(await res.text()).substring(0, 500)}`)
+  if (res.status === 201 || res.ok) {
+    console.log(`✅ Nota creada en timeline de oportunidad ${dealId} vía wallentries`)
+    return
   }
+
+  console.log(`⚠️ Wallentry no creado: ${res.status} - ${(await res.text()).substring(0, 500)}`)
 
   for (const ver of ["v2", "v1"]) {
     const headers = { Authorization: `Token ${process.env.CLIENTIFY_API_KEY}`, "Content-Type": "application/json" }
@@ -109,5 +103,7 @@ export async function crearNotaClientify(dealId: string, faltantes: string[]) {
     console.log(`⚠️ Nota no creada en ${ver}: ${res.status} - ${(await res.text()).substring(0, 500)}`)
   }
 
+  console.log(`❌ Nota no creada en V2 ni V1 para oportunidad ${dealId}`)
+}
   console.log(`❌ Nota no creada en V2 ni V1 para oportunidad ${dealId}`)
 }
