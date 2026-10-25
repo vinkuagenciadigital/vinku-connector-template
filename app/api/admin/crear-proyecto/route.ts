@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
   try {
     // Recibimos los datos que el usuario escribió en el formulario de la Fábrica
     // nombreCliente: nombre bonito para mostrar, slug: nombre para la URL, y las keys del cliente
-    const { nombreCliente, slug, clientifyApiKey, siigoUser, siigoAccessKey } = await req.json()
+    // --- NUEVO: erpProvider y campos Odoo vienen del selector que agregamos en la Fábrica ---
+    const { nombreCliente, slug, clientifyApiKey, siigoUser, siigoAccessKey, erpProvider, odooUrl, odooDb, odooUser, odooApiKey } = await req.json()
 
     // Si no viene slug no podemos crear el proyecto, frenamos aquí
     if (!slug) return NextResponse.json({ error: 'Falta slug' }, { status: 400 })
@@ -40,6 +41,11 @@ export async function POST(req: NextRequest) {
     const TEMPLATE_REPO = process.env.TEMPLATE_GITHUB_REPO!
     const TEAM_ID = process.env.VERCEL_TEAM_ID || ''
     
+    // --- NUEVO: Define qué ERP está construyendo la fábrica ---
+    const provider = (erpProvider || 'siigo').toLowerCase() // siigo | odoo
+    const esOdoo = provider === 'odoo'
+    const sufijoERP = esOdoo ? 'conexion-clientify-odoo' : 'conexion-clientify-siigo'
+
     // 1. Normaliza el slug para que sea una URL válida
     // Lo pasa a minúsculas, quita caracteres raros, deja solo letras, números y guiones
     // También quita guiones dobles y guiones al inicio o al final
@@ -51,13 +57,15 @@ export async function POST(req: NextRequest) {
     baseSlug = baseSlug.replace(/conexion-clientify-siig$/i, 'conexion-clientify-siigo')
 
     // Si el slug todavía no tiene el sufijo completo, se lo agrega
-    // Ej: "acme" -> "acme-conexion-clientify-siigo"
+    // Ej: "acme" -> "acme-conexion-clientify-siigo" o "acme-conexion-clientify-odoo"
     let cleanSlug = baseSlug
-    if (!cleanSlug.includes('conexion-clientify-siigo')) {
-      cleanSlug = `${cleanSlug}-conexion-clientify-siigo`
+    if (!cleanSlug.includes('conexion-clientify-siigo') && !cleanSlug.includes('conexion-clientify-odoo')) {
+      cleanSlug = `${cleanSlug}-${sufijoERP}`
     }
-    // Garantía final: si por cualquier cosa aún termina en siig, lo corrige
-    cleanSlug = cleanSlug.replace(/-siig$/i, '-siigo')
+    // Garantía final: si por cualquier cosa aún termina en siig, lo corrige (solo para Siigo)
+    if (!esOdoo) {
+      cleanSlug = cleanSlug.replace(/-siig$/i, '-siigo')
+    }
     // Vercel permite máximo 100 caracteres en el nombre, lo recortamos a 96 para dejar margen
     cleanSlug = cleanSlug.slice(0, 96) // Vercel max 100, dejamos margen
 
@@ -97,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     // Borra el dominio malo si Vercel lo creó
     // Así el cliente solo queda con la URL correcta terminada en siigo
-    if (dominioMalo !== dominioBueno) {
+    if (!esOdoo && dominioMalo !== dominioBueno) {
       await fetch(`https://api.vercel.com/v9/projects/${projectData.id}/domains/${dominioMalo}${teamQuery}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${VERCEL_TOKEN}` },
@@ -123,11 +131,23 @@ export async function POST(req: NextRequest) {
 
     // 5. Prepara las variables de entorno que va a tener el proyecto del cliente
     // Son las keys propias de ese cliente, no las de la Fábrica
-    // NOTA: aquí solo se guardan CLIENTIFY_API_KEY y CLIENTE_NOMBRE
-    // siigoUser y siigoAccessKey se reciben del formulario pero NO se guardan en este código
+    // --- NUEVO: Ahora guarda ERP_PROVIDER y guarda Siigo o Odoo según lo que eligió la fábrica ---
     const envs = [
+        { key: 'ERP_PROVIDER', value: provider },
         { key: 'CLIENTIFY_API_KEY', value: clientifyApiKey?.toString().trim() },
         { key: 'CLIENTE_NOMBRE', value: nombreCliente?.toString().trim() },
+        // Siigo (solo si la fábrica eligió Siigo)
+        ...(esOdoo ? [] : [
+          { key: 'SIIGO_USER', value: siigoUser?.toString().trim() },
+          { key: 'SIIGO_ACCESS_KEY', value: siigoAccessKey?.toString().trim() },
+        ]),
+        // Odoo (solo si la fábrica eligió Odoo)
+        ...(esOdoo ? [
+          { key: 'ODOO_URL', value: odooUrl?.toString().trim() },
+          { key: 'ODOO_DB', value: odooDb?.toString().trim() },
+          { key: 'ODOO_USER', value: odooUser?.toString().trim() },
+          { key: 'ODOO_API_KEY', value: odooApiKey?.toString().trim() },
+        ] : []),
     ]
 
     // 6. Guarda cada variable de entorno en Vercel, una por una
@@ -135,7 +155,7 @@ export async function POST(req: NextRequest) {
     // target: se aplica a production, preview y development
     for (const env of envs) {
       if(!env.value) continue
-      const isSecret = env.key.includes('API_KEY') || env.key.includes('ACCESS') || env.key.includes('USER')
+      const isSecret = env.key.includes('API_KEY') || env.key.includes('ACCESS') || env.key.includes('USER') || env.key.includes('ODOO')
       await fetch(`https://api.vercel.com/v10/projects/${projectData.id}/env${teamQuery}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
