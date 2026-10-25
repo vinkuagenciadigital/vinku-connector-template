@@ -83,7 +83,7 @@ export default function AdminPanel() {
       <div className="w-full max-w-3xl space-y-6">
         {/* Título de la Fábrica */}
         <div>
-          <h1 className="text-3xl font-bold text-black">Vinku Connector - <span className="text-[#8A6FE8]">Fábrica</span></h1>
+          <h1 className="text-3xl font-bold text-black">Vinku Connector - <span className="text-[#8A6FE8]">Fábrica Facturación</span></h1>
           <p className="text-sm text-black/60">Crea un nuevo proyecto de cliente en Vercel</p>
         </div>
 
