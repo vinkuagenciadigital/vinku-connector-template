@@ -4,6 +4,8 @@ import { crearNotaClientify } from '@/lib/clientifyNotes'
 import { addFactura } from '@/lib/facturasStore'
 import { enviarFacturaAClientify } from '@/lib/clientifyInvoiceReturn'
 import { getInvoiceByOpportunity, saveInvoice } from '@/lib/invoicesDb'
+// --- NUEVO: SELECTOR ERP - No toca lógica Siigo existente ---
+import { getErpService } from '@/lib/erpFactory'
 
 export const dynamic = 'force-dynamic'
 
@@ -512,21 +514,42 @@ export async function POST(req: NextRequest) {
           if (yaFacturado) {
             console.log(`⏭️ Deal ${dealId} ya facturado, no se duplica. Postgres: ${yaEnPostgres?.invoice_id || 'no'} / Clientify: ${yaEnPostgres? 'ya en Postgres' : 'ya tiene nro_factura_siigo'}`)
           } else {
-            const facturaMock = {
-              id: `MOCK-${Date.now()}`,
-              fecha: new Date().toISOString(),
-              oportunidad_id: String(dealId),
-              razon_social: dataParaSiigo.razon_social,
-              nit: dataParaSiigo.nit,
-              total: totalOportunidad,
-              estado: 'CREADA',
-              origen: 'MOCK' as const,
-              data: dataParaSiigo,
-              cliente_fuente: dataParaSiigo.cliente_fuente,
+            // --- NUEVO: SELECTOR ERP - Decide qué facturador usar según ENV de la fábrica ---
+            const erp = getErpService(); // Lee process.env.ERP_PROVIDER
+            console.log(`🏭 Fábrica usando ERP: ${erp.getName()} - Provider: ${process.env.ERP_PROVIDER}`);
+
+            let facturaReal: any = null;
+
+            if (erp.getName() === 'Odoo') {
+              // Si la fábrica construyó este cliente como Odoo, crea factura en Odoo
+              facturaReal = await erp.createInvoice({
+                customerData: clienteData,
+                productos: productosEnriquecidos,
+                total: totalOportunidad,
+                dealId: String(dealId),
+                dataParaSiigo // reutiliza nit, direccion, etc.
+              });
+            } else {
+              // Si la fábrica construyó este cliente como Siigo, usa la lógica actual (MOCK -> luego Siigo real)
+              // Aquí mantienes tu lógica actual de Siigo, no se toca
+              facturaReal = {
+                id: `MOCK-${Date.now()}`,
+                fecha: new Date().toISOString(),
+                oportunidad_id: String(dealId),
+                razon_social: dataParaSiigo.razon_social,
+                nit: dataParaSiigo.nit,
+                total: totalOportunidad,
+                estado: 'CREADA',
+                origen: 'MOCK' as const,
+                data: dataParaSiigo,
+                cliente_fuente: dataParaSiigo.cliente_fuente,
+              }
             }
+
+            const facturaMock = facturaReal;
             addFactura(facturaMock)
             await saveInvoice(String(dealId), facturaMock.id, facturaMock.total, facturaMock.origen)
-            console.log(`✅ Factura MOCK creada: ${facturaMock.id} para deal ${dealId}`)
+            console.log(`✅ Factura ${erp.getName()} creada: ${facturaMock.id} para deal ${dealId}`)
             // NOTA: enviarFacturaAClientify es quien escribe los 6 campos de salida en el deal:
             // nro_factura_siigo, estado_facturacion_siigo, error_facturacion_siigo,
             // siigo_invoice_id, fecha_facturacion_siigo, siigo_total_facturado (= totalOportunidad, importe del deal)
@@ -562,6 +585,7 @@ export async function GET() {
     ok: true,
     status: 'webhook_activo',
     cliente: process.env.CLIENTE_NOMBRE || 'test',
+    erp_provider: process.env.ERP_PROVIDER || 'siigo', // --- NUEVO: muestra qué ERP usa este cliente ---
     eventos: logs.slice(0,1)
   })
 }
