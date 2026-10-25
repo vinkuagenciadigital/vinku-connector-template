@@ -5,7 +5,8 @@ import { addFactura } from '@/lib/facturasStore'
 import { enviarFacturaAClientify } from '@/lib/clientifyInvoiceReturn'
 import { getInvoiceByOpportunity, saveInvoice } from '@/lib/invoicesDb'
 // --- NUEVO: SELECTOR ERP - No toca lógica Siigo existente ---
-import { getErpService } from '@/lib/erpFactory'
+// --- SELECTOR FABRICA - Solo guarda qué ERP eligió, NO factura real aún ---
+// Mantenemos simulación MOCK hasta construir motores reales
 
 export const dynamic = 'force-dynamic'
 
