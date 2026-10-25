@@ -20,7 +20,19 @@ export default function AdminPanel() {
   // slug: parte de la URL, ej: acme-sas. Se limpia en el onChange.
   // clientifyApiKey: API Key de la cuenta de Clientify DEL CLIENTE, no de la Fábrica.
   // siigoUser / siigoAccessKey: credenciales de Siigo DEL CLIENTE.
-  const [form, setForm] = useState({ nombreCliente: '', slug: '', clientifyApiKey: '', siigoUser: '', siigoAccessKey: '' })
+  const [form, setForm] = useState({ 
+    nombreCliente: '', 
+    slug: '', 
+    clientifyApiKey: '', 
+    siigoUser: '', 
+    siigoAccessKey: '',
+    // --- NUEVO: CAMPOS PARA SELECTOR ERP ---
+    erpProvider: 'siigo', // siigo | odoo
+    odooUrl: '',
+    odooDb: '',
+    odooUser: '',
+    odooApiKey: ''
+  })
 
   // Estado para saber si se está creando el proyecto.
   // Mientras es true, el botón se deshabilita y muestra "Creando proyecto...".
@@ -78,7 +90,7 @@ export default function AdminPanel() {
         {/* Tarjeta del formulario para crear un cliente nuevo */}
         <div className={cardClass}>
           <h2 className="font-semibold mb-1 text-[#8A6FE8]">🏭 Crear Nuevo Cliente</h2>
-          <p className="text-xs text-black/60 mb-5">Esto genera cliente.vercel.app con sus propias keys de Clientify y Siigo</p>
+          <p className="text-xs text-black/60 mb-5">Esto genera cliente.vercel.app con sus propias keys de Clientify y Siigo/Odoo</p>
           
           {/* Inputs del formulario, en 2 columnas en pantalla grande */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -86,17 +98,49 @@ export default function AdminPanel() {
             <input placeholder="Nombre Cliente (Ej: Acme SAS)" className={inputClass} value={form.nombreCliente} onChange={e=>setForm({...form, nombreCliente: e.target.value})} />
             {/* Slug. Al escribir lo pasa a minúsculas y cambia cualquier caracter raro por guión */}
             <input placeholder="Slug (ej: acme-sas)" className={inputClass} value={form.slug} onChange={e=>setForm({...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')})} />
+            
+            {/* --- NUEVO: SELECTOR DE ERP --- */}
+            <div className="md:col-span-2 bg-[#EDEBFE] p-1 rounded-lg flex gap-1 mt-1">
+              <button 
+                type="button"
+                onClick={()=>setForm({...form, erpProvider: 'siigo'})}
+                className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all ${form.erpProvider === 'siigo' ? 'bg-white text-[#8A6FE8] shadow-sm border border-[#8A6FE8]/20' : 'text-black/50 hover:text-black'}`}
+              >
+                📄 Siigo Nube
+              </button>
+              <button 
+                type="button"
+                onClick={()=>setForm({...form, erpProvider: 'odoo'})}
+                className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all ${form.erpProvider === 'odoo' ? 'bg-white text-[#8A6FE8] shadow-sm border border-[#8A6FE8]/20' : 'text-black/50 hover:text-black'}`}
+              >
+                🟣 Odoo ERP
+              </button>
+            </div>
+
             {/* API Key de Clientify del cliente, ocupa las 2 columnas */}
             <input placeholder="Clientify API Key del Cliente" className={inputClass + " md:col-span-2"} value={form.clientifyApiKey} onChange={e=>setForm({...form, clientifyApiKey: e.target.value})} />
-            {/* Usuario de Siigo del cliente */}
-            <input placeholder="Siigo User del Cliente" className={inputClass} value={form.siigoUser} onChange={e=>setForm({...form, siigoUser: e.target.value})} />
-            {/* Access Key de Siigo del cliente */}
-            <input placeholder="Siigo Access Key del Cliente" className={inputClass} value={form.siigoAccessKey} onChange={e=>setForm({...form, siigoAccessKey: e.target.value})} />
+            
+            {/* --- CAMPOS CONDICIONALES SEGÚN ERP SELECCIONADO --- */}
+            {form.erpProvider === 'siigo' ? (
+              <>
+                {/* Usuario de Siigo del cliente */}
+                <input placeholder="Siigo User del Cliente" className={inputClass} value={form.siigoUser} onChange={e=>setForm({...form, siigoUser: e.target.value})} />
+                {/* Access Key de Siigo del cliente */}
+                <input placeholder="Siigo Access Key del Cliente" className={inputClass} value={form.siigoAccessKey} onChange={e=>setForm({...form, siigoAccessKey: e.target.value})} />
+              </>
+            ) : (
+              <>
+                <input placeholder="Odoo URL (https://tu-empresa.odoo.com)" className={inputClass + " md:col-span-2"} value={form.odooUrl} onChange={e=>setForm({...form, odooUrl: e.target.value})} />
+                <input placeholder="Odoo DB (nombre base datos)" className={inputClass} value={form.odooDb} onChange={e=>setForm({...form, odooDb: e.target.value})} />
+                <input placeholder="Odoo User (email admin Odoo)" className={inputClass} value={form.odooUser} onChange={e=>setForm({...form, odooUser: e.target.value})} />
+                <input placeholder="Odoo API Key / Password" className={inputClass + " md:col-span-2"} value={form.odooApiKey} onChange={e=>setForm({...form, odooApiKey: e.target.value})} />
+              </>
+            )}
           </div>
 
           {/* Botón para crear el proyecto. Llama a crearProyecto. Se deshabilita mientras crea. */}
           <button onClick={crearProyecto} disabled={creando} className="mt-5 w-full bg-[#8A6FE8] hover:bg-[#7a5fe0] text-white px-4 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50">
-            {creando? 'Creando proyecto en Vercel...' : '🚀 CREAR PROYECTO CLIENTE'}
+            {creando? 'Creando proyecto en Vercel...' : `🚀 CREAR PROYECTO CLIENTE (${form.erpProvider === 'siigo' ? 'Siigo' : 'Odoo'})`}
           </button>
         </div>
 
@@ -112,7 +156,7 @@ export default function AdminPanel() {
                 {/* Etiqueta de éxito */}
                 <div className="flex items-center gap-2">
                   <span className="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">✅ CREADO</span>
-                  <p className="text-sm font-semibold text-black">Cliente creado satisfactoriamente</p>
+                  <p className="text-sm font-semibold text-black">Cliente creado satisfactoriamente ({form.erpProvider === 'siigo' ? 'Siigo' : 'Odoo'})</p>
                 </div>
                 
                 {/* URL del proyecto nuevo del cliente, con botón para copiar */}
